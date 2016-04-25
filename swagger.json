@@ -1,0 +1,853 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "0.0.1",
+        "title": "COO"
+    },
+    "paths": {
+        "/login": {
+            "get": {
+                "description": "Get current user\n",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "User"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Log user in to the platform\n",
+                "parameters": [
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "description": "Email of the user",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "password",
+                        "in": "query",
+                        "description": "Password of the user",
+                        "required": true,
+                        "type": "string",
+                        "format": "password"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/logout": {
+            "post": {
+                "description": "Log user out of the platform\n",
+                "responses": {
+                    "307": {
+                        "description": "Temporary redirect",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/signup": {
+            "post": {
+                "description": "Sign user up to the platform. The user will be sent an email with verification code URL.\n",
+                "parameters": [
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "description": "Email of the user",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "password",
+                        "in": "query",
+                        "description": "Password of the user",
+                        "required": true,
+                        "type": "string",
+                        "format": "password"
+                    },
+                    {
+                        "name": "surname",
+                        "in": "query",
+                        "description": "Surname of the user",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "description": "First name of the user",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "nickname",
+                        "in": "query",
+                        "description": "Nickname of the user",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "birthdate",
+                        "in": "query",
+                        "description": "Birthdate of the user",
+                        "required": true,
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    {
+                        "name": "gender",
+                        "in": "query",
+                        "description": "Gender of the user",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/verify": {
+            "post": {
+                "description": "Verify a user's account through a link sent via email\n",
+                "parameters": [
+                    {
+                        "name": "code",
+                        "in": "query",
+                        "description": "Verification code received in the email",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/user": {
+            "get": {
+                "description": "Get `User` object by ID\n",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID of the user",
+                        "required": true,
+                        "type": "number",
+                        "format": "int"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update `User`\n",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID of the user being updated",
+                        "required": true,
+                        "type": "number",
+                        "format": "int"
+                    },
+                    {
+                        "name": "surname",
+                        "in": "query",
+                        "description": "Surname of the user being updated",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "description": "Name of the user being updated",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "nickname",
+                        "in": "query",
+                        "description": "Nickname of the user being updated",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "description": "Email of the user being updated",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "gender",
+                        "in": "query",
+                        "description": "Gender of the user being updated",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "birthdate",
+                        "in": "query",
+                        "description": "Birthdate of the user being updated",
+                        "required": false,
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    {
+                        "name": "image",
+                        "in": "formData",
+                        "description": "Image of the user being updated",
+                        "required": false,
+                        "type": "file"
+                    },
+                    {
+                        "name": "image_url",
+                        "in": "query",
+                        "description": "Image URL of the user being updated",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "title": "User",
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "number",
+                                    "format": "int"
+                                },
+                                "surname": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "nickname": {
+                                    "type": "string"
+                                },
+                                "email": {
+                                    "type": "string"
+                                },
+                                "gender": {
+                                    "type": "string"
+                                },
+                                "birthdate": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                "image_url": {
+                                    "type": "string"
+                                },
+                                "created_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                "updated_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete existing `User`.\n",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "ID of the user being deleted",
+                        "required": true,
+                        "type": "number",
+                        "format": "int"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "description": "Gets `User` objects sorted by creation date.\n",
+                "parameters": [
+                    {
+                        "name": "count",
+                        "in": "query",
+                        "description": "Maximum number of users returned",
+                        "required": false,
+                        "type": "number",
+                        "format": "int"
+                    },
+                    {
+                        "name": "interests",
+                        "in": "query",
+                        "description": "Users returned will have these interests",
+                        "required": false,
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minimum": 0,
+                            "maximum": 5
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "Users"
+                        }
+                    }
+                }
+            }
+        },
+        "/longtable": {
+            "get": {
+                "description": "Get a long table by ID\n",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID of the long table",
+                        "required": true,
+                        "type": "number",
+                        "format": "int"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "LongTable"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new long table\n",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "description": "Name of the long table",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "description": "Start time of the long table",
+                        "required": true,
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "description": "End time of the long table",
+                        "required": true,
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "title": "longtable ID",
+                            "type": "number",
+                            "format": "int"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete existing `LongTable`\n",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID of the long table",
+                        "required": true,
+                        "type": "number",
+                        "format": "int"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/longtables": {
+            "get": {
+                "description": "Get `LongTable` objects sorted by creation date.\n",
+                "parameters": [
+                    {
+                        "name": "count",
+                        "in": "query",
+                        "description": "Maximum number of longtables returned",
+                        "required": false,
+                        "type": "number",
+                        "format": "int"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "LongTables"
+                        }
+                    }
+                }
+            }
+        },
+        "/longtable/book": {
+            "get": {
+                "description": "Get `LongTableBooking` objects sorted by creation date\n",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "LongTableBookings"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update existing `LongTableBooking`\n",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID of the long table booking",
+                        "required": true,
+                        "type": "number",
+                        "format": "int"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "LongTableBooking"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new `LongTableBooking`\n",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Date being booked",
+                        "required": true,
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "LongTableBooking"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete existing `LongTableBooking`\n",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID of the long table booking",
+                        "required": true,
+                        "type": "number",
+                        "format": "int"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "title": "message",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "User": {
+            "title": "User",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "number",
+                    "format": "int"
+                },
+                "surname": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "birthdate": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "Users": {
+            "type": "array",
+            "items": {
+                "$ref": "User"
+            }
+        },
+        "LongTable": {
+            "title": "LongTable",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "number",
+                    "format": "int"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "num_seats": {
+                    "type": "number",
+                    "format": "int"
+                },
+                "start_time": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "end_time": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "LongTables": {
+            "type": "array",
+            "items": {
+                "$ref": "LongTable"
+            }
+        },
+        "LongTableBooking": {
+            "title": "LongTableBooking",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "number",
+                    "format": "int"
+                },
+                "user_id": {
+                    "type": "number",
+                    "format": "int"
+                },
+                "seat_position": {
+                    "type": "number",
+                    "format": "int"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "LongTableBookings": {
+            "type": "array",
+            "items": {
+                "$ref": "LongTableBooking"
+            }
+        }
+    }
+}
