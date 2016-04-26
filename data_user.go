@@ -63,6 +63,7 @@ func insertUser(user User) (uint64, error) {
 
     now := time.Now().Unix()
 
+    // Set user
     user["created_at"] = now
     for k, v := range user {
         args = append(args, k, v)
@@ -72,6 +73,7 @@ func insertUser(user User) (uint64, error) {
     }
     user["id"] = userID
 
+    // Add user to users list
     if _, err := db.Do("ZADD", "users", now, userID); err != nil {
         return 0, err
     }
@@ -86,10 +88,12 @@ func deleteUser(user User) error {
 
     userID := user["id"]
 
+    // Delete user
     if _, err := db.Do("DEL", fmt.Sprint("user:", userID)); err != nil {
         return err
     }
 
+    // Remove user from users list
     if _, err := db.Do("ZREM", "users", userID); err != nil {
         return err
     }
@@ -108,6 +112,7 @@ func updateUser(user User) (err error) {
 
     user["updated_at"] = time.Now().Unix()
 
+    // Update user
     for k, v := range user {
         args = append(args, k, v)
     }
