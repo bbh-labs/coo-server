@@ -30,7 +30,7 @@ func userExists(user User, fetch bool) (bool, User) {
 }
 
 func hasUser(user User) (bool, error) {
-    if reply, err := db.Do("EXISTS", fmt.Sprintf("user:", user["id"])); err != nil {
+    if reply, err := db.Do("EXISTS", fmt.Sprint("user:", user["id"])); err != nil {
         return false, err
     } else if count, err := redis.Int(reply, err); err != nil {
         return false, err

@@ -44,6 +44,11 @@ func TestUser(t *testing.T) {
         t.Error("getUser:", err)
     }
 
+    // Has user
+    if ok, _ := hasUser(user); !ok {
+        t.Error("hasUser")
+    }
+
     // Delete user
     if err = deleteUser(user); err != nil {
         t.Error("deleteUser:", err)
