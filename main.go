@@ -36,10 +36,12 @@ var port = flag.String("port", "8080", "server port")
 
 // Errors
 var (
-    ErrEmailTooShort    = errors.New("Email too short")
-    ErrPasswordTooShort = errors.New("Password too short")
-    ErrNotLoggedIn      = errors.New("User is not logged in")
-    ErrPasswordMismatch = errors.New("Password mismatch")
+    ErrEmailTooShort       = errors.New("Email too short")
+    ErrPasswordTooShort    = errors.New("Password too short")
+    ErrNotLoggedIn         = errors.New("User is not logged in")
+    ErrPasswordMismatch    = errors.New("Password mismatch")
+    ErrTypeAssertionFailed = errors.New("Type assertion failed")
+    ErrKeyNotFound = errors.New("Key not found")
 )
 
 func main() {
@@ -150,7 +152,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
     }
     user["description"] = authuser.Description
     user["email"] = authuser.Email
-    user["imageURL"] = authuser.AvatarURL
+    user["image_url"] = authuser.AvatarURL
 
     if user["id"], err = insertUser(user); err != nil {
         log.Println(err)
@@ -255,7 +257,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             "lastname":  lastname,
             "email":     email,
             "password":  string(hashedPassword),
-            "imageURL":  imageURL,
+            "image_url":  imageURL,
         }
 
         if user["id"], err = insertUser(user); err != nil {
@@ -328,10 +330,13 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             w.WriteHeader(http.StatusInternalServerError)
             return
         } else {
-            if user["image_url"].(string) != "" {
-                if err := os.Remove(user["image_url"]); err != nil {
+            if imageURL, ok := user["image_url"].(string); ok && imageURL != "" {
+                if err := os.Remove(imageURL); err != nil {
                     log.Println(err)
                 }
+            } else {
+                w.WriteHeader(http.StatusInternalServerError)
+                return
             }
             user["image_url"] = destination
         }

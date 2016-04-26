@@ -13,7 +13,7 @@ func loggedIn(w http.ResponseWriter, r *http.Request, fetchUser bool) (bool, Use
 	}
 
 	val := session.Values["userID"]
-	if userID, ok := val.(int64); !ok {
+	if userID, ok := val.(uint64); !ok {
 		return false, nil
 	} else if exists, user := userExists(User{"id": userID}, fetchUser); !exists {
 		return false, nil
