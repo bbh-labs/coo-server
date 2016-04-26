@@ -13,14 +13,30 @@ type User map[string]interface{}
 func userExists(user User, fetch bool) (bool, User) {
     // Check if the user exists and retrieve it
 	if fetch {
-        //
-        return true, User{}
+        if user, err := getUser(user); err != nil {
+            return false, nil
+        } else {
+            return true, user
+        }
 
     // Just check if the user exists
 	} else {
-        //
-		return true, nil
+        if ok, err := hasUser(user); err != nil {
+            return false, nil
+        } else {
+            return ok, nil
+        }
 	}
+}
+
+func hasUser(user User) (bool, error) {
+    if reply, err := db.Do("EXISTS", fmt.Sprintf("user:", user["id"])); err != nil {
+        return false, err
+    } else if count, err := redis.Int(reply, err); err != nil {
+        return false, err
+    } else {
+        return count > 0, nil
+    }
 }
 
 func getUser(user User) (User, error) {
