@@ -14,6 +14,7 @@ import (
     "strconv"
     "strings"
     "syscall"
+    "time"
 
     "github.com/codegangsta/negroni"
     "github.com/garyburd/redigo/redis"
@@ -442,6 +443,22 @@ func longtableHandler(w http.ResponseWriter, r *http.Request) {
             longtable["num_seats"] = numSeats
         }
 
+        openingTime := r.FormValue("opening_time")
+        if _, err := time.Parse("15:04", openingTime); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longtable["opening_time"] = openingTime
+        }
+
+        closingTime := r.FormValue("closing_time")
+        if _, err := time.Parse("15:04", closingTime); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longtable["closing_time"] = closingTime
+        }
+
         if longtableID, err := insertLongTable(longtable); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -471,6 +488,22 @@ func longtableHandler(w http.ResponseWriter, r *http.Request) {
             return
         } else {
             longtable["num_seats"] = numSeats
+        }
+
+        openingTime := r.FormValue("opening_time")
+        if _, err := time.Parse("15:04", openingTime); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longtable["opening_time"] = openingTime
+        }
+
+        closingTime := r.FormValue("closing_time")
+        if _, err := time.Parse("15:04", closingTime); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longtable["closing_time"] = closingTime
         }
 
         if err := updateLongTable(longtable); err != nil {
@@ -509,6 +542,16 @@ func longtablesHandler(w http.ResponseWriter, r *http.Request) {
             }
             w.Write(data)
         }
+
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func longtableBookingHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        //
 
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
