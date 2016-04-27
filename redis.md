@@ -1,7 +1,7 @@
 # User
-INCR next_user_id
+INCR nextUserID
 
-HMSET user:[user_id]
+HMSET user:[userID]
     firstname       (string)
     lastname        (string)
     description     (string)
@@ -20,16 +20,16 @@ HMSET user:[user_id]
     updated_at      (time)
 
 # User with the same Interests
-ZADD interest:[interest] (time) [user_id]
+ZADD interest:[interest] (time) [userID]
 
 # Users
-ZADD users (time) [user_id]
+ZADD users (time) [userID]
 
 # User-to-User
-ZADD users:[user_id] (time) [user_id]
+ZADD users:[userID] (time) [userID]
 
 # Room Booking
-HMSET room_booking:[room_booking_id]
+HMSET roomBooking:[roomBookingID]
     user_id         (int)
     checkin_date    (date)
     checkout_date   (date)
@@ -37,12 +37,12 @@ HMSET room_booking:[room_booking_id]
     updated_at      (time)
 
 # Room Bookings
-ZADD room_bookings:[user_id] (time) [room_booking_id]
+ZADD roomBookings:[userID] (time) [roomBookingID]
 
 # LongTable
-INCR next_longtable_id
+INCR nextLongTableID
 
-HMSET longtable:[longtable_id]
+HMSET longTable:[longTableID]
     name         (string)
     num_seats    (int)
     opening_time (time)
@@ -51,10 +51,16 @@ HMSET longtable:[longtable_id]
     updated_at   (time)
 
 # LongTables
-ZADD longtables (time) [longtable_id]
+ZADD longTables (time) [longTableID]
 
 # LongTable Booking
-HMSET longtable_booking
+INCR nextLongTableBookingID
+
+HMSET longTableBooking
+    user_id       (int)
     seat_position (int)
     created_at    (time)
     updated_at    (time)
+
+# LongTable Bookings
+ZADD longTableBookings (time) [longTableBookingID]

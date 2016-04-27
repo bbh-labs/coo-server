@@ -10,18 +10,18 @@ import (
 
 type LongTable map[string]interface{}
 
-func longtableExists(longtable LongTable, fetch bool) (bool, LongTable) {
-    // Check if the longtable exists and retrieve it
+func longTableExists(longTable LongTable, fetch bool) (bool, LongTable) {
+    // Check if the longTable exists and retrieve it
 	if fetch {
-        if longtable, err := getLongTable(longtable); err != nil {
+        if longTable, err := getLongTable(longTable); err != nil {
             return false, nil
         } else {
-            return true, longtable
+            return true, longTable
         }
 
-    // Just check if the longtable exists
+    // Just check if the longTable exists
 	} else {
-        if ok, err := hasLongTable(longtable); err != nil {
+        if ok, err := hasLongTable(longTable); err != nil {
             return false, nil
         } else {
             return ok, nil
@@ -29,8 +29,8 @@ func longtableExists(longtable LongTable, fetch bool) (bool, LongTable) {
 	}
 }
 
-func hasLongTable(longtable LongTable) (bool, error) {
-    if reply, err := db.Do("EXISTS", fmt.Sprint("longtable:", longtable["id"])); err != nil {
+func hasLongTable(longTable LongTable) (bool, error) {
+    if reply, err := db.Do("EXISTS", fmt.Sprint("longTable:", longTable["id"])); err != nil {
         return false, err
     } else if count, err := redis.Int(reply, err); err != nil {
         return false, err
@@ -39,97 +39,97 @@ func hasLongTable(longtable LongTable) (bool, error) {
     }
 }
 
-func getLongTable(longtable LongTable) (LongTable, error) {
-    if longtableID, ok := longtable["id"]; !ok {
-        return longtable, ErrKeyNotFound
+func getLongTable(longTable LongTable) (LongTable, error) {
+    if longTableID, ok := longTable["id"]; !ok {
+        return longTable, ErrKeyNotFound
     } else {
-        if reply, err := db.Do("HGETALL", fmt.Sprint("longtable:", longtableID)); err != nil {
-            return longtable, err
+        if reply, err := db.Do("HGETALL", fmt.Sprint("longTable:", longTableID)); err != nil {
+            return longTable, err
         } else if retrievedLongTable, err := redis.StringMap(reply, err); err != nil {
-            return longtable, err
+            return longTable, err
         } else {
             for k, v := range retrievedLongTable {
                 switch k {
                 case "id":
-                    longtableID, err := strconv.ParseUint(v, 10, 64)
+                    longTableID, err := strconv.ParseUint(v, 10, 64)
                     if err != nil {
-                        return longtable, err
+                        return longTable, err
                     }
-                    longtable[k] = longtableID
+                    longTable[k] = longTableID
                 default:
-                    longtable[k] = v
+                    longTable[k] = v
                 }
             }
         }
     }
 
-    return longtable, nil
+    return longTable, nil
 }
 
-func insertLongTable(longtable LongTable) (uint64, error) {
-    var longtableID uint64
-    if reply, err := db.Do("INCR", "next_longtable_id"); err != nil {
+func insertLongTable(longTable LongTable) (uint64, error) {
+    var longTableID uint64
+    if reply, err := db.Do("INCR", "nextLongTableID"); err != nil {
         return 0, err
-    } else if longtableID, err = redis.Uint64(reply, err); err != nil {
+    } else if longTableID, err = redis.Uint64(reply, err); err != nil {
         return 0, err
     }
 
     var args []interface{}
-    args = append(args, fmt.Sprint("longtable:", longtableID))
+    args = append(args, fmt.Sprint("longTable:", longTableID))
 
     now := time.Now().Unix()
 
-    // Set longtable
-    longtable["created_at"] = now
-    for k, v := range longtable {
+    // Set longTable
+    longTable["created_at"] = now
+    for k, v := range longTable {
         args = append(args, k, v)
     }
     if _, err := db.Do("HMSET", args...); err != nil {
         return 0, err
     }
-    longtable["id"] = longtableID
+    longTable["id"] = longTableID
 
-    // Add longtable to longtables list
-    if _, err := db.Do("ZADD", "longtables", now, longtableID); err != nil {
+    // Add longTable to longTables list
+    if _, err := db.Do("ZADD", "longTables", now, longTableID); err != nil {
         return 0, err
     }
 
-	return longtableID, nil
+	return longTableID, nil
 }
 
-func deleteLongTable(longtable LongTable) error {
-    if _, err := db.Do("DECR", "next_longtable_id"); err != nil {
+func deleteLongTable(longTable LongTable) error {
+    if _, err := db.Do("DECR", "nextLongTableID"); err != nil {
         return err
     }
 
-    longtableID := longtable["id"]
+    longTableID := longTable["id"]
 
-    // Delete longtable
-    if _, err := db.Do("DEL", fmt.Sprint("longtable:", longtableID)); err != nil {
+    // Delete longTable
+    if _, err := db.Do("DEL", fmt.Sprint("longTable:", longTableID)); err != nil {
         return err
     }
 
-    // Remove longtable from longtables list
-    if _, err := db.Do("ZREM", "longtables", longtableID); err != nil {
+    // Remove longTable from longTables list
+    if _, err := db.Do("ZREM", "longTables", longTableID); err != nil {
         return err
     }
 
     return nil
 }
 
-func updateLongTable(longtable LongTable) (err error) {
+func updateLongTable(longTable LongTable) (err error) {
     var args []interface{}
 
-    if longtableID, ok := longtable["id"]; !ok {
+    if longTableID, ok := longTable["id"]; !ok {
         return ErrTypeAssertionFailed
     } else {
-        args = append(args, fmt.Sprint("longtable:", longtableID))
+        args = append(args, fmt.Sprint("longTable:", longTableID))
     }
 
-    longtable["updated_at"] = time.Now().Unix()
+    longTable["updatedAt"] = time.Now().Unix()
 
-    // Update longtable
-    for k, v := range longtable {
+    // Update longTable
+    for k, v := range longTable {
         args = append(args, k, v)
     }
     if _, err := db.Do("HMSET", args...); err != nil {
@@ -142,25 +142,25 @@ func updateLongTable(longtable LongTable) (err error) {
 func getLongTables(params map[string]interface{}) ([]LongTable, error) {
     var count uint64 = uint64(params["count"].(int))
 
-    return _getLongTables("ZRANGE", "longtables", 0, count - 1)
+    return _getLongTables("ZRANGE", "longTables", 0, count - 1)
 }
 
 func _getLongTables(command string, args ...interface{}) ([]LongTable, error) {
-    var longtables []LongTable
+    var longTables []LongTable
 
     if reply, err := db.Do(command, args...); err != nil {
         return nil, err
-    } else if longtableIDs, err := redis.Ints(reply, err); err != nil {
+    } else if longTableIDs, err := redis.Ints(reply, err); err != nil {
         return nil, err
     } else {
-        for _, longtableID := range longtableIDs {
-            longtable := LongTable{"id": longtableID}
-            if _, err = getLongTable(longtable); err != nil {
+        for _, longTableID := range longTableIDs {
+            longTable := LongTable{"id": longTableID}
+            if _, err = getLongTable(longTable); err != nil {
                 return nil, err
             }
-            longtables = append(longtables, longtable)
+            longTables = append(longTables, longTable)
         }
     }
 
-    return longtables, nil
+    return longTables, nil
 }

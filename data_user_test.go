@@ -20,7 +20,7 @@ func TestUser(t *testing.T) {
         "lastname": "Doe",
         "email": "jane.doe@example.com",
         "password": "abcd1234",
-        "image_url": "content/jane_doe.jpg",
+        "imageURL": "content/jane_doe.jpg",
     }
 
     var userID uint64
@@ -34,7 +34,7 @@ func TestUser(t *testing.T) {
     user["lastname"] = "Cook"
     user["email"] = "john.cook@example.com"
     user["password"] = "1234abcd"
-    user["image_url"] = "content/john_cook.jpg"
+    user["imageURL"] = "content/john_cook.jpg"
     if err := updateUser(user); err != nil {
         t.Error("updateUser:", err)
     }

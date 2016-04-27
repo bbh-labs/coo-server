@@ -14,42 +14,42 @@ func TestLongTable(t *testing.T) {
     }
     defer db.Close()
 
-    // Insert longtable
-    longtable := LongTable{
-        "name": "Some longtable",
-        "num_seats": 40,
+    // Insert longTable
+    longTable := LongTable{
+        "name": "Some longTable",
+        "numSeats": 40,
     }
 
-    var longtableID uint64
-    if longtableID, err = insertLongTable(longtable); err != nil {
+    var longTableID uint64
+    if longTableID, err = insertLongTable(longTable); err != nil {
         t.Error("insertLongTable:", err)
     }
-    longtable["id"] = longtableID
+    longTable["id"] = longTableID
 
-    // Update longtable
-    longtable["name"] = "Some longer longtable"
-    longtable["num_seats"] = 50
-    if err := updateLongTable(longtable); err != nil {
+    // Update longTable
+    longTable["name"] = "Some longer longTable"
+    longTable["numSeats"] = 50
+    if err := updateLongTable(longTable); err != nil {
         t.Error("updateLongTable:", err)
     }
 
-    // Get longtable
-    if _, err := getLongTable(longtable); err != nil {
+    // Get longTable
+    if _, err := getLongTable(longTable); err != nil {
         t.Error("getLongTable:", err)
     }
 
-    // Has longtable
-    if ok, _ := hasLongTable(longtable); !ok {
+    // Has longTable
+    if ok, _ := hasLongTable(longTable); !ok {
         t.Error("hasLongTable")
     }
 
-    // Get longtables
-    if longtables, err := getLongTables(map[string]interface{}{"count": 5}); err != nil || len(longtables) < 1 {
+    // Get longTables
+    if longTables, err := getLongTables(map[string]interface{}{"count": 5}); err != nil || len(longTables) < 1 {
         t.Error("getLongTables")
     }
 
-    // Delete longtable
-    if err = deleteLongTable(longtable); err != nil {
+    // Delete longTable
+    if err = deleteLongTable(longTable); err != nil {
         t.Error("deleteLongTable:", err)
     }
 }

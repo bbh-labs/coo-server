@@ -68,7 +68,7 @@ func getUser(user User) (User, error) {
 
 func insertUser(user User) (uint64, error) {
     var userID uint64
-    if reply, err := db.Do("INCR", "next_user_id"); err != nil {
+    if reply, err := db.Do("INCR", "nextUserID"); err != nil {
         return 0, err
     } else if userID, err = redis.Uint64(reply, err); err != nil {
         return 0, err
@@ -80,7 +80,7 @@ func insertUser(user User) (uint64, error) {
     now := time.Now().Unix()
 
     // Set user
-    user["created_at"] = now
+    user["createdAt"] = now
     for k, v := range user {
         args = append(args, k, v)
     }
@@ -98,7 +98,7 @@ func insertUser(user User) (uint64, error) {
 }
 
 func deleteUser(user User) error {
-    if _, err := db.Do("DECR", "next_user_id"); err != nil {
+    if _, err := db.Do("DECR", "nextUserID"); err != nil {
         return err
     }
 
@@ -126,7 +126,7 @@ func updateUser(user User) (err error) {
         args = append(args, fmt.Sprint("user:", userID))
     }
 
-    user["updated_at"] = time.Now().Unix()
+    user["updatedAt"] = time.Now().Unix()
 
     // Update user
     for k, v := range user {

@@ -86,9 +86,9 @@ func main() {
     apiRouter.HandleFunc("/logout", logoutHandler)
     apiRouter.HandleFunc("/user", userHandler)
     apiRouter.HandleFunc("/users", usersHandler)
-    apiRouter.HandleFunc("/longtable", longtableHandler)
-    apiRouter.HandleFunc("/longtables", longtablesHandler)
-    apiRouter.HandleFunc("/longtable/booking", longtableBookingHandler)
+    apiRouter.HandleFunc("/longtable", longTableHandler)
+    apiRouter.HandleFunc("/longtables", longTablesHandler)
+    apiRouter.HandleFunc("/longtable/booking", longTableBookingHandler)
 
     // Prepare social login authenticators
     patHandler := pat.New()
@@ -159,7 +159,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
     }
     user["description"] = authuser.Description
     user["email"] = authuser.Email
-    user["image_url"] = authuser.AvatarURL
+    user["imageURL"] = authuser.AvatarURL
 
     if user["id"], err = insertUser(user); err != nil {
         log.Println(err)
@@ -264,7 +264,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             "lastname":  lastname,
             "email":     email,
             "password":  string(hashedPassword),
-            "image_url":  imageURL,
+            "imageURL":  imageURL,
         }
 
         if user["id"], err = insertUser(user); err != nil {
@@ -337,7 +337,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             w.WriteHeader(http.StatusInternalServerError)
             return
         } else {
-            if imageURL, ok := user["image_url"].(string); ok && imageURL != "" {
+            if imageURL, ok := user["imageURL"].(string); ok && imageURL != "" {
                 if err := os.Remove(imageURL); err != nil {
                     log.Println(err)
                 }
@@ -345,7 +345,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
-            user["image_url"] = destination
+            user["imageURL"] = destination
         }
 
         // Update user interests if exist
@@ -405,23 +405,23 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
-func longtableHandler(w http.ResponseWriter, r *http.Request) {
+func longTableHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        longtable := LongTable{}
+        longTable := LongTable{}
         if id, err := strconv.ParseUint(r.FormValue("id"), 10, 64); err != nil {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
         } else {
-            longtable["id"] = id
+            longTable["id"] = id
         }
 
-        if _, err := getLongTable(longtable); err != nil {
+        if _, err := getLongTable(longTable); err != nil {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
         }
 
-        data, err := json.Marshal(longtable)
+        data, err := json.Marshal(longTable)
         if err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -435,44 +435,44 @@ func longtableHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        longtable := LongTable{"name": name}
-        if numSeats, err := strconv.ParseUint(r.FormValue("num_seats"), 10, 64); err != nil {
+        longTable := LongTable{"name": name}
+        if numSeats, err := strconv.ParseUint(r.FormValue("numSeats"), 10, 64); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
-            longtable["num_seats"] = numSeats
+            longTable["numSeats"] = numSeats
         }
 
-        openingTime := r.FormValue("opening_time")
+        openingTime := r.FormValue("openingTime")
         if _, err := time.Parse("15:04", openingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
-            longtable["opening_time"] = openingTime
+            longTable["openingTime"] = openingTime
         }
 
-        closingTime := r.FormValue("closing_time")
+        closingTime := r.FormValue("closingTime")
         if _, err := time.Parse("15:04", closingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
-            longtable["closing_time"] = closingTime
+            longTable["closingTime"] = closingTime
         }
 
-        if longtableID, err := insertLongTable(longtable); err != nil {
+        if longTableID, err := insertLongTable(longTable); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         } else {
-            w.Write([]byte(strconv.FormatUint(longtableID, 64)))
+            w.Write([]byte(strconv.FormatUint(longTableID, 64)))
         }
 
     case "PATCH":
-        longtable := LongTable{}
+        longTable := LongTable{}
         if id, err := strconv.ParseUint(r.FormValue("id"), 10, 64); err != nil {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
         } else {
-            longtable["id"] = id
+            longTable["id"] = id
         }
 
         name := r.FormValue("name")
@@ -480,37 +480,37 @@ func longtableHandler(w http.ResponseWriter, r *http.Request) {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
         } else {
-            longtable["name"] = name
+            longTable["name"] = name
         }
 
-        if numSeats, err := strconv.ParseUint(r.FormValue("num_seats"), 10, 64); err != nil {
+        if numSeats, err := strconv.ParseUint(r.FormValue("numSeats"), 10, 64); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
-            longtable["num_seats"] = numSeats
+            longTable["numSeats"] = numSeats
         }
 
-        openingTime := r.FormValue("opening_time")
+        openingTime := r.FormValue("openingTime")
         if _, err := time.Parse("15:04", openingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
-            longtable["opening_time"] = openingTime
+            longTable["openingTime"] = openingTime
         }
 
-        closingTime := r.FormValue("closing_time")
+        closingTime := r.FormValue("closingTime")
         if _, err := time.Parse("15:04", closingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
-            longtable["closing_time"] = closingTime
+            longTable["closingTime"] = closingTime
         }
 
-        if err := updateLongTable(longtable); err != nil {
+        if err := updateLongTable(longTable); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
-            w.Write([]byte(strconv.FormatUint(longtable["id"].(uint64), 64)))
+            w.Write([]byte(strconv.FormatUint(longTable["id"].(uint64), 64)))
         }
 
     default:
@@ -518,7 +518,7 @@ func longtableHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func longtablesHandler(w http.ResponseWriter, r *http.Request) {
+func longTablesHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
         var count uint64 = 100
@@ -531,11 +531,11 @@ func longtablesHandler(w http.ResponseWriter, r *http.Request) {
 
         params := map[string]interface{}{"count": count}
 
-        if longtables, err := getLongTables(params); err != nil {
+        if longTables, err := getLongTables(params); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         } else {
-            data, err := json.Marshal(longtables)
+            data, err := json.Marshal(longTables)
             if err != nil {
                 http.Error(w, err.Error(), http.StatusInternalServerError)
                 return
@@ -548,7 +548,7 @@ func longtablesHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func longtableBookingHandler(w http.ResponseWriter, r *http.Request) {
+func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
         //
