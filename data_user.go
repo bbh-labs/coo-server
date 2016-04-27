@@ -41,7 +41,7 @@ func hasUser(user User) (bool, error) {
 
 func getUser(user User) (User, error) {
     if userID, ok := user["id"]; !ok {
-        return user, ErrKeyNotFound
+        return user, ErrMissingKey
     } else {
         if reply, err := db.Do("HGETALL", fmt.Sprint("user:", userID)); err != nil {
             return user, err
@@ -66,11 +66,11 @@ func getUser(user User) (User, error) {
     return user, nil
 }
 
-func insertUser(user User) (uint64, error) {
-    var userID uint64
+func insertUser(user User) (int, error) {
+    var userID int
     if reply, err := db.Do("INCR", "nextUserID"); err != nil {
         return 0, err
-    } else if userID, err = redis.Uint64(reply, err); err != nil {
+    } else if userID, err = redis.Int(reply, err); err != nil {
         return 0, err
     }
 
@@ -114,6 +114,22 @@ func deleteUser(user User) error {
         return err
     }
 
+    // Delete longTableBookings from userLongTableBookings
+    if _, err := db.Do("DEL", fmt.Sprint("userLongTableBookings:", userID)); err != nil {
+        return err
+    }
+
+    // Delete userConnections
+    if otherUserIDs, err := user.otherUserIDs(); err != nil {
+        return err
+    } else {
+        for _, otherUserID := range otherUserIDs {
+            if err = user.removeUser(User{"id" : otherUserID}); err != nil {
+                return err
+            }
+        }
+    }
+
     return nil
 }
 
@@ -140,7 +156,7 @@ func updateUser(user User) (err error) {
 }
 
 func getUsers(params map[string]interface{}) ([]User, error) {
-    var count uint64 = uint64(params["count"].(int))
+    count := int(params["count"].(int))
 
     if interests, ok := params["interests"].([]string); ok {
         var allUsers []User
@@ -162,9 +178,7 @@ func getUsers(params map[string]interface{}) ([]User, error) {
 func _getUsers(command string, args ...interface{}) ([]User, error) {
     var users []User
 
-    if reply, err := db.Do(command, args...); err != nil {
-        return nil, err
-    } else if userIDs, err := redis.Ints(reply, err); err != nil {
+    if userIDs, err := _getUserIDs(command, args...); err != nil {
         return nil, err
     } else {
         for _, userID := range userIDs {
@@ -177,4 +191,45 @@ func _getUsers(command string, args ...interface{}) ([]User, error) {
     }
 
     return users, nil
+}
+
+func _getUserIDs(command string, args ...interface{}) ([]int, error) {
+    if reply, err := db.Do(command, args...); err != nil {
+        return nil, err
+    } else if userIDs, err := redis.Ints(reply, err); err != nil {
+        return nil, err
+    } else {
+        return userIDs, nil
+    }
+}
+
+func (user User) addUser(otherUser User) error {
+    now := time.Now().Unix()
+    if _, err := db.Do("ZADD", fmt.Sprint("userConnections:", user["id"]), now, otherUser["id"]); err != nil {
+        return err
+    }
+    if _, err := db.Do("ZADD", fmt.Sprint("userConnections:", otherUser["id"]), now, user["id"]); err != nil {
+        return err
+    }
+    return nil
+}
+
+func (user User) removeUser(otherUser User) error {
+    if _, err := db.Do("ZREM", fmt.Sprint("userConnections:", user["id"]), otherUser["id"]); err != nil {
+        return err
+    }
+    if _, err := db.Do("ZREM", fmt.Sprint("userConnections:", otherUser["id"]), user["id"]); err != nil {
+        return err
+    }
+    return nil
+}
+
+func (user User) otherUserIDs() ([]int, error) {
+    if reply, err := db.Do("ZRANGE", fmt.Sprint("userConnections:", user["id"]), 0, -1); err != nil {
+        return nil, err
+    } else if userIDs, err := redis.Ints(reply, err); err != nil {
+        return nil, err
+    } else {
+        return userIDs, nil
+    }
 }

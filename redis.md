@@ -2,6 +2,7 @@
 INCR nextUserID
 
 HMSET user:[userID]
+    id              (int)
     firstname       (string)
     lastname        (string)
     description     (string)
@@ -9,15 +10,15 @@ HMSET user:[userID]
     password        (string)
     blocked         (bool)
     birthdate       (date)
-    image_url       (string)
-    travelling_as   (string)
-    wechat_number   (string)
-    line_number     (string)
-    facebook_number (string)
-    skype_number    (string)
-    whatsapp_number (string)
-    created_at      (time)
-    updated_at      (time)
+    imageURL        (string)
+    travellingAs    (string)
+    wechatNumber    (string)
+    lineNumber      (string)
+    facebookNumber  (string)
+    skypeNumber     (string)
+    whatsappNumber  (string)
+    createdAt       (time)
+    updatedAt       (time)
 
 # User with the same Interests
 ZADD interest:[interest] (time) [userID]
@@ -25,16 +26,16 @@ ZADD interest:[interest] (time) [userID]
 # Users
 ZADD users (time) [userID]
 
-# User-to-User
-ZADD users:[userID] (time) [userID]
+# User Connections
+ZADD userConnections:[userID] (time) [userID]
 
 # Room Booking
 HMSET roomBooking:[roomBookingID]
-    user_id         (int)
-    checkin_date    (date)
-    checkout_date   (date)
-    created_at      (time)
-    updated_at      (time)
+    userID         (int)
+    checkinDate    (date)
+    checkoutDate   (date)
+    createdAt      (time)
+    updatedAt      (time)
 
 # Room Bookings
 ZADD roomBookings:[userID] (time) [roomBookingID]
@@ -43,12 +44,14 @@ ZADD roomBookings:[userID] (time) [roomBookingID]
 INCR nextLongTableID
 
 HMSET longTable:[longTableID]
+    id           (int)
+    userID       (int)
     name         (string)
-    num_seats    (int)
-    opening_time (time)
-    closing_time (time)
-    created_at   (time)
-    updated_at   (time)
+    numSeats     (int)
+    openingTime  (time)
+    closingTime  (time)
+    createdAt    (time)
+    updatedAt    (time)
 
 # LongTables
 ZADD longTables (time) [longTableID]
@@ -56,11 +59,14 @@ ZADD longTables (time) [longTableID]
 # LongTable Booking
 INCR nextLongTableBookingID
 
-HMSET longTableBooking
-    user_id       (int)
-    seat_position (int)
-    created_at    (time)
-    updated_at    (time)
+HMSET longTableBooking:[longTableBooking]
+    id           (int)
+    userID       (int)
+    longtableID  (int)
+    seatPosition (int)
+    createdAt    (time)
+    updatedAt    (time)
 
 # LongTable Bookings
-ZADD longTableBookings (time) [longTableBookingID]
+ZADD longTableBookings:[longTableID] (time) [longTableBookingID]
+ZADD userLongTableBookings:[userID] (time) [longTableBookingID]

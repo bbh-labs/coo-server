@@ -20,7 +20,7 @@ func TestLongTable(t *testing.T) {
         "numSeats": 40,
     }
 
-    var longTableID uint64
+    var longTableID int
     if longTableID, err = insertLongTable(longTable); err != nil {
         t.Error("insertLongTable:", err)
     }

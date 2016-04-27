@@ -41,7 +41,7 @@ func hasLongTable(longTable LongTable) (bool, error) {
 
 func getLongTable(longTable LongTable) (LongTable, error) {
     if longTableID, ok := longTable["id"]; !ok {
-        return longTable, ErrKeyNotFound
+        return longTable, ErrMissingKey
     } else {
         if reply, err := db.Do("HGETALL", fmt.Sprint("longTable:", longTableID)); err != nil {
             return longTable, err
@@ -66,11 +66,11 @@ func getLongTable(longTable LongTable) (LongTable, error) {
     return longTable, nil
 }
 
-func insertLongTable(longTable LongTable) (uint64, error) {
-    var longTableID uint64
+func insertLongTable(longTable LongTable) (int, error) {
+    var longTableID int
     if reply, err := db.Do("INCR", "nextLongTableID"); err != nil {
         return 0, err
-    } else if longTableID, err = redis.Uint64(reply, err); err != nil {
+    } else if longTableID, err = redis.Int(reply, err); err != nil {
         return 0, err
     }
 
@@ -114,6 +114,11 @@ func deleteLongTable(longTable LongTable) error {
         return err
     }
 
+    // Delete longTableBookings from userLongTableBookings
+    if _, err := db.Do("DEL", fmt.Sprint("longTableBookings:", longTableID)); err != nil {
+        return err
+    }
+
     return nil
 }
 
@@ -140,7 +145,7 @@ func updateLongTable(longTable LongTable) (err error) {
 }
 
 func getLongTables(params map[string]interface{}) ([]LongTable, error) {
-    var count uint64 = uint64(params["count"].(int))
+    count := params["count"].(int)
 
     return _getLongTables("ZRANGE", "longTables", 0, count - 1)
 }

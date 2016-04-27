@@ -43,8 +43,9 @@ var (
     ErrNotLoggedIn         = errors.New("User is not logged in")
     ErrPasswordMismatch    = errors.New("Password mismatch")
     ErrTypeAssertionFailed = errors.New("Type assertion failed")
-    ErrKeyNotFound = errors.New("Key not found")
-    ErrEmptyParameter = errors.New("Empty parameter")
+    ErrEntityNotFound      = errors.New("Entity not found")
+    ErrEmptyParameter      = errors.New("Empty parameter")
+    ErrMissingKey          = errors.New("Missing key")
 )
 
 func main() {
@@ -86,6 +87,7 @@ func main() {
     apiRouter.HandleFunc("/logout", logoutHandler)
     apiRouter.HandleFunc("/user", userHandler)
     apiRouter.HandleFunc("/users", usersHandler)
+    apiRouter.HandleFunc("/user/connect", userConnectHandler)
     apiRouter.HandleFunc("/longtable", longTableHandler)
     apiRouter.HandleFunc("/longtables", longTablesHandler)
     apiRouter.HandleFunc("/longtable/booking", longTableBookingHandler)
@@ -368,10 +370,10 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 func usersHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        var count uint64 = 100
+        var count int = 100
         var err error
 
-        if count, err = strconv.ParseUint(r.FormValue("count"), 10, 64); err != nil {
+        if count, err = strconv.Atoi(r.FormValue("count")); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         }
@@ -405,11 +407,68 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
+func userConnectHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        var otherUserID int
+        var err error
+
+        if otherUserID, err = strconv.Atoi(r.FormValue("otherUserID")); err != nil {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        } else if ok, err := hasUser(User{"id": otherUserID}); !ok || err != nil {
+            http.Error(w, ErrEntityNotFound.Error(), http.StatusBadRequest)
+            return
+        }
+
+        if err = user.addUser(User{"id": otherUserID}); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+
+    case "DELETE":
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        var otherUserID int
+        var err error
+
+        if otherUserID, err = strconv.Atoi(r.FormValue("otherUserID")); err != nil {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        } else if ok, err := hasUser(User{"id": otherUserID}); !ok || err != nil {
+            http.Error(w, ErrEntityNotFound.Error(), http.StatusBadRequest)
+            return
+        }
+
+        if err = user.removeUser(User{"id": otherUserID}); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
 func longTableHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
         longTable := LongTable{}
-        if id, err := strconv.ParseUint(r.FormValue("id"), 10, 64); err != nil {
+        if id, err := strconv.Atoi(r.FormValue("id")); err != nil {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
         } else {
@@ -429,14 +488,20 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
         w.Write(data)
 
     case "POST":
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
         name := r.FormValue("name")
         if len(name) == 0 {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
         }
 
-        longTable := LongTable{"name": name}
-        if numSeats, err := strconv.ParseUint(r.FormValue("numSeats"), 10, 64); err != nil {
+        longTable := LongTable{"userID": user["id"], "name": name}
+        if numSeats, err := strconv.Atoi(r.FormValue("numSeats")); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
@@ -463,12 +528,18 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         } else {
-            w.Write([]byte(strconv.FormatUint(longTableID, 64)))
+            w.Write([]byte(strconv.Itoa(longTableID)))
         }
 
     case "PATCH":
-        longTable := LongTable{}
-        if id, err := strconv.ParseUint(r.FormValue("id"), 10, 64); err != nil {
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        longTable := LongTable{"userID": user["id"]}
+        if id, err := strconv.Atoi(r.FormValue("id")); err != nil {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
         } else {
@@ -483,7 +554,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             longTable["name"] = name
         }
 
-        if numSeats, err := strconv.ParseUint(r.FormValue("numSeats"), 10, 64); err != nil {
+        if numSeats, err := strconv.Atoi(r.FormValue("numSeats")); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
@@ -510,7 +581,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
-            w.Write([]byte(strconv.FormatUint(longTable["id"].(uint64), 64)))
+            w.Write([]byte(strconv.Itoa(longTable["id"].(int))))
         }
 
     default:
@@ -521,10 +592,10 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
 func longTablesHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        var count uint64 = 100
+        var count int = 100
         var err error
 
-        if count, err = strconv.ParseUint(r.FormValue("count"), 10, 64); err != nil {
+        if count, err = strconv.Atoi(r.FormValue("count")); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         }
@@ -551,7 +622,49 @@ func longTablesHandler(w http.ResponseWriter, r *http.Request) {
 func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
-        //
+        var longTableID, seatPosition int
+        var err error
+
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        longTableBooking := LongTableBooking{"userID": user["id"]}
+        if seatPosition, err = strconv.Atoi(r.FormValue("seatPosition")); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longTableBooking["seatPosition"] = seatPosition
+        }
+
+        if longTableID, err = strconv.Atoi(r.FormValue("longTableID")); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            if longTable, err := getLongTable(LongTable{"id": longTableID}); err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            } else {
+                // Check if seatPosition is equal to or higher than numSeats
+                if numSeats, ok := longTable["numSeats"].(int); !ok {
+                    http.Error(w, ErrTypeAssertionFailed.Error(), http.StatusInternalServerError)
+                    return
+                } else if seatPosition >= numSeats {
+                    w.WriteHeader(http.StatusBadRequest)
+                    return
+                }
+            }
+            longTableBooking["longTableID"] = longTableID
+        }
+
+        if longTableBookingID, err := insertLongTableBooking(longTableBooking); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            w.Write([]byte(strconv.Itoa(longTableBookingID)))
+        }
 
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
@@ -612,4 +725,13 @@ func randomFilename() string {
     }
 
     return string(output)
+}
+
+func checkKeys(m map[string]interface{}, args ...string) bool {
+    for _, key := range args {
+        if _, ok := m[key]; !ok {
+            return false
+        }
+    }
+    return true
 }

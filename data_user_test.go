@@ -23,7 +23,7 @@ func TestUser(t *testing.T) {
         "imageURL": "content/jane_doe.jpg",
     }
 
-    var userID uint64
+    var userID int
     if userID, err = insertUser(user); err != nil {
         t.Error("insertUser:", err)
     }
@@ -51,7 +51,7 @@ func TestUser(t *testing.T) {
 
     // Get users
     if users, err := getUsers(map[string]interface{}{"count": 5}); err != nil || len(users) < 1 {
-        t.Error("getUsers")
+        t.Error("getUsers:", err)
     }
 
     // Delete user
