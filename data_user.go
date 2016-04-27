@@ -138,3 +138,43 @@ func updateUser(user User) (err error) {
 
 	return nil
 }
+
+func getUsers(params map[string]interface{}) ([]User, error) {
+    var count uint64 = uint64(params["count"].(int))
+
+    if interests, ok := params["interests"].([]string); ok {
+        var allUsers []User
+
+        for _, interest := range interests {
+            if users, err := _getUsers("ZRANGE", fmt.Sprint("interest:", interest), 0, count - 1); err != nil {
+                return nil, err
+            } else {
+                allUsers = append(allUsers, users...)
+            }
+        }
+
+        return allUsers, nil
+    }
+
+    return _getUsers("ZRANGE", "users", 0, count - 1)
+}
+
+func _getUsers(command string, args ...interface{}) ([]User, error) {
+    var users []User
+
+    if reply, err := db.Do(command, args...); err != nil {
+        return nil, err
+    } else if userIDs, err := redis.Ints(reply, err); err != nil {
+        return nil, err
+    } else {
+        for _, userID := range userIDs {
+            user := User{"id": userID}
+            if _, err = getUser(user); err != nil {
+                return nil, err
+            }
+            users = append(users, user)
+        }
+    }
+
+    return users, nil
+}

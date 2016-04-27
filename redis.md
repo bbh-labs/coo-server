@@ -19,8 +19,8 @@ HMSET user:[user_id]
     created_at      (time)
     updated_at      (time)
 
-# User Interests
-ZADD interests:[user_id] (time) [interest]
+# User with the same Interests
+ZADD interest:[interest] (time) [user_id]
 
 # Users
 ZADD users (time) [user_id]
@@ -36,6 +36,7 @@ HMSET room_booking:[room_booking_id]
     created_at      (time)
     updated_at      (time)
 
+# Room Bookings
 ZADD room_bookings:[user_id] (time) [room_booking_id]
 
 # LongTable

@@ -11,6 +11,7 @@ import (
     "os"
     "os/exec"
     "os/signal"
+    "strconv"
     "strings"
     "syscall"
 
@@ -42,6 +43,7 @@ var (
     ErrPasswordMismatch    = errors.New("Password mismatch")
     ErrTypeAssertionFailed = errors.New("Type assertion failed")
     ErrKeyNotFound = errors.New("Key not found")
+    ErrEmptyParameter = errors.New("Empty parameter")
 )
 
 func main() {
@@ -82,6 +84,10 @@ func main() {
     apiRouter.HandleFunc("/signup", signupHandler)
     apiRouter.HandleFunc("/logout", logoutHandler)
     apiRouter.HandleFunc("/user", userHandler)
+    apiRouter.HandleFunc("/users", usersHandler)
+    apiRouter.HandleFunc("/longtable", longtableHandler)
+    apiRouter.HandleFunc("/longtables", longtablesHandler)
+    apiRouter.HandleFunc("/longtable/booking", longtableBookingHandler)
 
     // Prepare social login authenticators
     patHandler := pat.New()
@@ -341,6 +347,11 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             user["image_url"] = destination
         }
 
+        // Update user interests if exist
+        if interests, ok := r.Form["interests"]; ok {
+            user["interests"] = interests
+        }
+
         if err := updateUser(user); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
@@ -353,12 +364,155 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
+func usersHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        var count uint64 = 100
+        var err error
+
+        if count, err = strconv.ParseUint(r.FormValue("count"), 10, 64); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        params := map[string]interface{}{"count": count}
+        if interests, ok := r.Form["interests"]; ok {
+            params["interests"] = interests
+        }
+
+        if users, err := getUsers(params); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            data, err := json.Marshal(users)
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            w.Write(data)
+        }
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
     if err := logOut(w, r); err != nil {
         log.Println(err)
         w.WriteHeader(http.StatusInternalServerError)
     }
     w.WriteHeader(http.StatusOK)
+}
+
+func longtableHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        longtable := LongTable{}
+        if id, err := strconv.ParseUint(r.FormValue("id"), 10, 64); err != nil {
+            http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longtable["id"] = id
+        }
+
+        if _, err := getLongTable(longtable); err != nil {
+            http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
+            return
+        }
+
+        data, err := json.Marshal(longtable)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+        w.Write(data)
+
+    case "POST":
+        name := r.FormValue("name")
+        if len(name) == 0 {
+            http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
+            return
+        }
+
+        longtable := LongTable{"name": name}
+        if numSeats, err := strconv.ParseUint(r.FormValue("num_seats"), 10, 64); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longtable["num_seats"] = numSeats
+        }
+
+        if longtableID, err := insertLongTable(longtable); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            w.Write([]byte(strconv.FormatUint(longtableID, 64)))
+        }
+
+    case "PATCH":
+        longtable := LongTable{}
+        if id, err := strconv.ParseUint(r.FormValue("id"), 10, 64); err != nil {
+            http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longtable["id"] = id
+        }
+
+        name := r.FormValue("name")
+        if len(name) == 0 {
+            http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longtable["name"] = name
+        }
+
+        if numSeats, err := strconv.ParseUint(r.FormValue("num_seats"), 10, 64); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longtable["num_seats"] = numSeats
+        }
+
+        if err := updateLongTable(longtable); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            w.Write([]byte(strconv.FormatUint(longtable["id"].(uint64), 64)))
+        }
+
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func longtablesHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        var count uint64 = 100
+        var err error
+
+        if count, err = strconv.ParseUint(r.FormValue("count"), 10, 64); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        params := map[string]interface{}{"count": count}
+
+        if longtables, err := getLongTables(params); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            data, err := json.Marshal(longtables)
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            w.Write(data)
+        }
+
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
 }
 
 func copyFile(r *http.Request, name string, folder, filename string) (destination string, err error) {

@@ -49,6 +49,11 @@ func TestUser(t *testing.T) {
         t.Error("hasUser")
     }
 
+    // Get users
+    if users, err := getUsers(map[string]interface{}{"count": 5}); err != nil || len(users) < 1 {
+        t.Error("getUsers")
+    }
+
     // Delete user
     if err = deleteUser(user); err != nil {
         t.Error("deleteUser:", err)
