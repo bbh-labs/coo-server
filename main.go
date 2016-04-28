@@ -376,6 +376,19 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         w.WriteHeader(http.StatusOK)
+    case "DELETE":
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        if err := deleteUser(user); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
