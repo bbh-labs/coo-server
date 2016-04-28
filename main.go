@@ -4,6 +4,7 @@ import (
     "encoding/json"
     "errors"
     "flag"
+    "html/template"
     "io"
     "log"
     "mime/multipart"
@@ -30,11 +31,13 @@ import (
 )
 
 var db redis.Conn
-var ss = sessions.NewCookieStore([]byte("SHuADRV4npfjU4stuN5dvcYaMmblSZlUyZbEl/mKyyw="))
+var ss = sessions.NewCookieStore([]byte("HbeA9vqJ7Wk+rLGmYzyp9SAdHxmK4EIVtylo/aXZ/ZA="))
+var templates *template.Template
 
 // Command-line flags
 var address = flag.String("address", "http://localhost:8080", "server address")
 var port = flag.String("port", "8080", "server port")
+var test = flag.Bool("test", false, "serve front-end test sample")
 
 // Errors
 var (
@@ -46,6 +49,7 @@ var (
     ErrEntityNotFound      = errors.New("Entity not found")
     ErrEmptyParameter      = errors.New("Empty parameter")
     ErrMissingKey          = errors.New("Missing key")
+    ErrIDMismach           = errors.New("ID mismatch")
 )
 
 func main() {
@@ -88,7 +92,7 @@ func main() {
     apiRouter.HandleFunc("/user", userHandler)
     apiRouter.HandleFunc("/user/connect", userConnectHandler)
     apiRouter.HandleFunc("/users", usersHandler)
-    apiRouter.HandleFunc("/users/simular", usersSimilarHandler)
+    apiRouter.HandleFunc("/users/similar", usersSimilarHandler)
     apiRouter.HandleFunc("/longtable", longTableHandler)
     apiRouter.HandleFunc("/longtables", longTablesHandler)
     apiRouter.HandleFunc("/longtable/booking", longTableBookingHandler)
@@ -99,10 +103,41 @@ func main() {
     patHandler.Get("/auth/{provider}", gothic.BeginAuthHandler)
     router.PathPrefix("/auth").Handler(patHandler)
 
+    // If running test server, set up template handlers
+    if *test {
+        templates = template.Must(template.ParseGlob("test/*.html"))
+        setupTemplateHandlers(router)
+    }
+
     // Run web server
-    n := negroni.Classic()
+    var n *negroni.Negroni
+    if *test {
+        n = negroni.New(negroni.NewRecovery(), negroni.NewLogger())
+    } else {
+        n = negroni.Classic()
+    }
     n.UseHandler(router)
     n.Run(":" + *port)
+}
+
+func setupTemplateHandlers(router *mux.Router) {
+    // Index
+    router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        if loggedIn, _ := loggedIn(w, r, false); loggedIn {
+            http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
+        } else {
+            templates.ExecuteTemplate(w, "index", nil)
+        }
+    })
+
+    // Dashboard
+    router.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+        if loggedIn, user := loggedIn(w, r, true); loggedIn {
+            templates.ExecuteTemplate(w, "dashboard", user)
+        } else {
+            http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+        }
+    })
 }
 
 func authHandler(w http.ResponseWriter, r *http.Request) {
@@ -190,11 +225,15 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         if ok, user := loggedIn(w, r, true); !ok {
             w.WriteHeader(http.StatusForbidden)
         } else {
-            if data, err := json.Marshal(user); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
+            if *test {
+                http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
             } else {
-                w.Write(data)
+                if data, err := json.Marshal(user); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                } else {
+                    w.Write(data)
+                }
             }
         }
     case "POST":
@@ -221,14 +260,18 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
         // Check if User exists
         if exists, user := userExists(user, true); exists {
-            if err := bcrypt.CompareHashAndPassword(user["password"].([]byte), []byte(password)); err != nil {
+            if err := bcrypt.CompareHashAndPassword([]byte(user["password"].(string)), []byte(password)); err != nil {
                 w.WriteHeader(http.StatusForbidden)
             } else {
                 if err := logIn(w, r, user); err != nil {
                     log.Println(err)
                     w.WriteHeader(http.StatusInternalServerError)
                 } else {
-                    w.WriteHeader(http.StatusOK)
+                    if *test {
+                        http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
+                    } else {
+                        w.WriteHeader(http.StatusOK)
+                    }
                 }
             }
         } else {
@@ -264,12 +307,14 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         imageURL := ""
 
         // Copy uploaded image to 'content' folder
-        if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        } else {
-            imageURL = destination
+        if r.Header["Content-Type"][0] == "multipart/form-data" {
+            if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            } else {
+                imageURL = destination
+            }
         }
 
         // Generate hashed password
@@ -308,7 +353,11 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        w.WriteHeader(http.StatusOK)
+        if *test {
+            http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
+        } else {
+            w.WriteHeader(http.StatusOK)
+        }
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
@@ -320,7 +369,12 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
         log.Println(err)
         w.WriteHeader(http.StatusInternalServerError)
     }
-    w.WriteHeader(http.StatusOK)
+
+    if *test {
+        http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+    } else {
+        w.WriteHeader(http.StatusOK)
+    }
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
@@ -843,12 +897,22 @@ func randomFilename() string {
     return string(output)
 }
 
-// Check if map has specified keys
-func checkKeys(m map[string]interface{}, args ...string) bool {
+// Check if map has all the specified keys
+func hasKeys(m map[string]interface{}, args ...string) bool {
     for _, key := range args {
         if _, ok := m[key]; !ok {
             return false
         }
     }
     return true
+}
+
+// Check if map has one of the specified keys
+func hasKey(m map[string]interface{}, args ...string) (bool, string) {
+    for _, key := range args {
+        if _, ok := m[key]; ok {
+            return true, key
+        }
+    }
+    return false, ""
 }

@@ -1,0 +1,57 @@
+{{ define "index" }}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>COO | Index</title>
+    <meta charset='utf-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+</head>
+<body>
+    <h3>Log In</h3>
+    <form action='/api/login' method='POST'>
+        <div>
+            <label>Email
+                <input type='email' name='email' />
+            </label>
+        </div>
+        <div>
+            <label>Password
+                <input type='password' name='password' />
+            </label>
+        </div>
+        <div>
+            <button type='submit'>Log In</button>
+        </div>
+    </form>
+
+    <h3>Sign Up</h3>
+    <form action='/api/signup' method='POST'>
+        <div>
+            <label>Firstname
+                <input type='text' name='firstname' />
+            </label>
+        </div>
+        <div>
+            <label>Lastname
+                <input type='text' name='lastname' />
+            </label>
+        </div>
+        <div>
+            <label>Email
+                <input type='email' name='email' />
+            </label>
+        </div>
+        <div>
+            <label>Password
+                <input type='password' name='password' />
+            </label>
+        </div>
+        <div>
+            <button type='submit'>Sign Up</button>
+        </div>
+    </form>
+</body>
+</html>
+
+{{ end }}

@@ -54,7 +54,7 @@ func getLongTable(longTable LongTable) (LongTable, error) {
             for k, v := range retrievedLongTable {
                 switch k {
                 case "id":
-                    longTableID, err := strconv.ParseUint(v, 10, 64)
+                    longTableID, err := strconv.Atoi(v)
                     if err != nil {
                         return longTable, err
                     }
@@ -77,6 +77,7 @@ func insertLongTable(longTable LongTable) (int, error) {
     } else if longTableID, err = redis.Int(reply, err); err != nil {
         return 0, err
     }
+    longTable["id"] = longTableID
 
     var args []interface{}
     args = append(args, fmt.Sprint("longTable:", longTableID))
@@ -91,7 +92,6 @@ func insertLongTable(longTable LongTable) (int, error) {
     if _, err := db.Do("HMSET", args...); err != nil {
         return 0, err
     }
-    longTable["id"] = longTableID
 
     // Add longTable to longTables list
     if _, err := db.Do("ZADD", "longTables", now, longTableID); err != nil {

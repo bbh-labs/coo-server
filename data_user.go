@@ -43,27 +43,30 @@ func hasUser(user User) (bool, error) {
 
 // Get User with specified parameters
 func getUser(user User) (User, error) {
-    if userID, ok := user["id"]; !ok {
-        return user, ErrMissingKey
-    } else {
-        if reply, err := db.Do("HGETALL", fmt.Sprint("user:", userID)); err != nil {
-            return user, err
-        } else if retrievedUser, err := redis.StringMap(reply, err); err != nil {
-            return user, err
+    var err error
+
+    ok, key := hasKey(user, "id", "email")
+    if !ok {
+        return nil, ErrMissingKey
+    }
+
+    switch key {
+    case "id":
+        user, err = _getUser("HGETALL", fmt.Sprint("user:", user["id"]))
+    case "email":
+        var reply interface{}
+        var userID int
+
+        if reply, err = db.Do("GET", fmt.Sprint("user:email:", user["email"])); err != nil {
+            return nil, err
+        } else if userID, err = redis.Int(reply, err); err != nil {
+            return nil, err
         } else {
-            for k, v := range retrievedUser {
-                switch k {
-                case "id":
-                    userID, err := strconv.ParseUint(v, 10, 64)
-                    if err != nil {
-                        return user, err
-                    }
-                    user[k] = userID
-                default:
-                    user[k] = v
-                }
-            }
+            user, err = _getUser("HGETALL", fmt.Sprint("user:", userID))
         }
+    }
+    if err != nil {
+        return nil, err
     }
 
     if interests, err := user.interests(); err != nil {
@@ -77,12 +80,17 @@ func getUser(user User) (User, error) {
 
 // Insert User with specified parameters
 func insertUser(user User) (int, error) {
+    if ok, _ := hasKey(user, "email"); !ok {
+        return 0, ErrMissingKey
+    }
+
     var userID int
     if reply, err := db.Do("INCR", "nextUserID"); err != nil {
         return 0, err
     } else if userID, err = redis.Int(reply, err); err != nil {
         return 0, err
     }
+    user["id"] = userID
 
     var args []interface{}
     args = append(args, fmt.Sprint("user:", userID))
@@ -97,10 +105,14 @@ func insertUser(user User) (int, error) {
     if _, err := db.Do("HMSET", args...); err != nil {
         return 0, err
     }
-    user["id"] = userID
 
     // Add User to users list
     if _, err := db.Do("ZADD", "users", now, userID); err != nil {
+        return 0, err
+    }
+
+    // Add User email reference
+    if err := user.setEmailReference(""); err != nil {
         return 0, err
     }
 
@@ -118,6 +130,10 @@ func insertUser(user User) (int, error) {
 
 // Delete User with specified parameters
 func deleteUser(user User) error {
+    if ok, _ := hasKey(user, "email"); !ok {
+        return ErrMissingKey
+    }
+
     if _, err := db.Do("DECR", "nextUserID"); err != nil {
         return err
     }
@@ -131,6 +147,11 @@ func deleteUser(user User) error {
 
     // Remove User from users list
     if _, err := db.Do("ZREM", "users", userID); err != nil {
+        return err
+    }
+
+    // Remove User email reference
+    if err := user.deleteEmailReference(); err != nil {
         return err
     }
 
@@ -174,12 +195,26 @@ func updateUser(user User) (err error) {
 
     user["updatedAt"] = time.Now().Unix()
 
+    // Delete email reference
+    if _, ok := user["email"]; ok {
+        if err := user.deleteEmailReference(); err != nil {
+            return err
+        }
+    }
+
     // Update User
     for k, v := range user {
         args = append(args, k, v)
     }
     if _, err := db.Do("HMSET", args...); err != nil {
         return err
+    }
+
+    // Delete email reference
+    if email, ok := user["email"]; ok {
+        if err := user.setEmailReference(email.(string)); err != nil {
+            return err
+        }
     }
 
     // Update User interests if exist
@@ -213,6 +248,32 @@ func getUsers(params map[string]interface{}) ([]User, error) {
     }
 
     return _getUsers("ZRANGE", "users", 0, count - 1)
+}
+
+// Get User with specified raw Redis command
+func _getUser(command string, args ...interface{}) (User, error) {
+    user := User{}
+
+    if reply, err := db.Do(command, args...); err != nil {
+        return nil, err
+    } else if retrievedUser, err := redis.StringMap(reply, err); err != nil {
+        return nil, err
+    } else {
+        for k, v := range retrievedUser {
+            switch k {
+            case "id":
+                if userID, err := strconv.Atoi(v); err != nil {
+                    return user, err
+                } else {
+                    user[k] = userID
+                }
+            default:
+                user[k] = v
+            }
+        }
+    }
+
+    return user, nil
 }
 
 // Get Users with specified raw Redis command
@@ -354,5 +415,32 @@ func (user User) clearInterests() error {
         return err
     }
 
+    return nil
+}
+
+func (user User) email() (string, error) {
+    if reply, err := db.Do("HGET", fmt.Sprint("user:", user["id"]), "email"); err != nil {
+        return "", err
+    } else if email, err := redis.String(reply, err); err != nil {
+        return "", err
+    } else {
+        return email, nil
+    }
+}
+
+func (user User) setEmailReference(email string) error {
+    if email == "" {
+        email = user["email"].(string)
+    }
+    if _, err := db.Do("SET", fmt.Sprint("user:email:", user["email"]), user["id"]); err != nil {
+        return err
+    }
+    return nil
+}
+
+func (user User) deleteEmailReference() error {
+    if _, err := db.Do("DEL", fmt.Sprint("user:email:", user["email"])); err != nil {
+        return err
+    }
     return nil
 }

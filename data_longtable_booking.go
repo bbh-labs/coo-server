@@ -53,7 +53,7 @@ func getLongTableBooking(longTableBooking LongTableBooking) (LongTableBooking, e
             for k, v := range retrievedLongTableBooking {
                 switch k {
                 case "id":
-                    longTableBookingID, err := strconv.ParseUint(v, 10, 64)
+                    longTableBookingID, err := strconv.Atoi(v)
                     if err != nil {
                         return longTableBooking, err
                     }
@@ -70,7 +70,7 @@ func getLongTableBooking(longTableBooking LongTableBooking) (LongTableBooking, e
 
 // Insert LongTableBooking with specified parameters
 func insertLongTableBooking(longTableBooking LongTableBooking) (int, error) {
-    if !checkKeys(longTableBooking, "longTableID", "userID") {
+    if !hasKeys(longTableBooking, "longTableID", "userID") {
         return 0, ErrMissingKey
     }
 
@@ -80,6 +80,7 @@ func insertLongTableBooking(longTableBooking LongTableBooking) (int, error) {
     } else if longTableBookingID, err = redis.Int(reply, err); err != nil {
         return 0, err
     }
+    longTableBooking["id"] = longTableBookingID
 
     var args []interface{}
     args = append(args, fmt.Sprint("longTableBooking:", longTableBookingID))
@@ -94,7 +95,6 @@ func insertLongTableBooking(longTableBooking LongTableBooking) (int, error) {
     if _, err := db.Do("HMSET", args...); err != nil {
         return 0, err
     }
-    longTableBooking["id"] = longTableBookingID
 
     // Add longTableBooking to longTableBookings list
     if _, err := db.Do("ZADD", fmt.Sprint("longTableBookings:", longTableBooking["longTableID"]), now, longTableBookingID); err != nil {
@@ -111,7 +111,7 @@ func insertLongTableBooking(longTableBooking LongTableBooking) (int, error) {
 
 // Delete LongTableBooking with specified parameters
 func deleteLongTableBooking(longTableBooking LongTableBooking) error {
-    if !checkKeys(longTableBooking, "longTableID", "userID") {
+    if !hasKeys(longTableBooking, "longTableID", "userID") {
         return ErrMissingKey
     }
 
