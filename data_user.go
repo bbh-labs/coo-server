@@ -63,6 +63,12 @@ func getUser(user User) (User, error) {
         }
     }
 
+    if interests, err := user.interests(); err != nil {
+        return nil, err
+    } else {
+        user["interests"] = interests
+    }
+
     return user, nil
 }
 
@@ -92,6 +98,15 @@ func insertUser(user User) (int, error) {
     // Add user to users list
     if _, err := db.Do("ZADD", "users", now, userID); err != nil {
         return 0, err
+    }
+
+    // Update user interests if exist
+    if interests, ok := user["interests"]; ok {
+        if interests, ok := interests.([]string); ok {
+            if err := user.setInterests(interests); err != nil {
+                return 0, err
+            }
+        }
     }
 
 	return userID, nil
@@ -130,6 +145,11 @@ func deleteUser(user User) error {
         }
     }
 
+    // Delete interests
+    if err := user.clearInterests(); err != nil {
+        return err
+    }
+
     return nil
 }
 
@@ -150,6 +170,15 @@ func updateUser(user User) (err error) {
     }
     if _, err := db.Do("HMSET", args...); err != nil {
         return err
+    }
+
+    // Update user interests if exist
+    if interests, ok := user["interests"]; ok {
+        if interests, ok := interests.([]string); ok {
+            if err := user.setInterests(interests); err != nil {
+                return err
+            }
+        }
     }
 
 	return nil
@@ -232,4 +261,73 @@ func (user User) otherUserIDs() ([]int, error) {
     } else {
         return userIDs, nil
     }
+}
+
+func (user User) similarUsers() ([]User, error) {
+    var allUsers []User
+
+    if interests, err := user.interests(); err != nil {
+        return nil, err
+    } else {
+
+        for _, interest := range interests {
+            if users, err := _getUsers("ZRANGE", fmt.Sprint("interest:", interest), 0, -1); err != nil {
+                return nil, err
+            } else {
+                allUsers = append(allUsers, users...)
+            }
+        }
+
+        return allUsers, nil
+    }
+}
+
+func (user User) interests() ([]string, error) {
+    if reply, err := db.Do("ZRANGE", fmt.Sprint("user:", user["id"], ":interests"), 0, -1); err != nil {
+        if err == redis.ErrNil {
+            return nil, nil
+        }
+        return nil, err
+    } else if interests, err := redis.Strings(reply, err); err != nil {
+        return nil, err
+    } else {
+        return interests, nil
+    }
+}
+
+func (user User) setInterests(interests []string) error {
+    if err := user.clearInterests(); err != nil {
+        return err
+    }
+
+    for _, interest := range interests {
+        if _, err := db.Do("ZADD", fmt.Sprint("interest:", interest), time.Now().Unix(), user["id"]); err != nil {
+            return err
+        }
+        if _, err := db.Do("ZADD", fmt.Sprint("user:", user["id"], ":interests"), time.Now().Unix(), interest); err != nil {
+            return err
+        }
+    }
+
+    return nil
+}
+
+func (user User) clearInterests() error {
+    if interests, err := user.interests(); err == nil {
+        // Delete interests
+        if _, err := db.Do("DEL", fmt.Sprint("user:", user["id"], ":interests")); err != nil {
+            return err
+        }
+
+        // Remove user from interests
+        for _, interest := range interests {
+            if _, err := db.Do("ZREM", fmt.Sprint("interest:", interest), user["id"]); err != nil {
+                return err
+            }
+        }
+    } else if err != redis.ErrNil {
+        return err
+    }
+
+    return nil
 }

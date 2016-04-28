@@ -20,8 +20,9 @@ HMSET user:[userID]
     createdAt       (time)
     updatedAt       (time)
 
-# User with the same Interests
+# Users with the same Interests
 ZADD interest:[interest] (time) [userID]
+ZADD user:[userID]:interests (time) [interest]
 
 # Users
 ZADD users (time) [userID]

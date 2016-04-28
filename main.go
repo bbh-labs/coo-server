@@ -86,8 +86,9 @@ func main() {
     apiRouter.HandleFunc("/signup", signupHandler)
     apiRouter.HandleFunc("/logout", logoutHandler)
     apiRouter.HandleFunc("/user", userHandler)
-    apiRouter.HandleFunc("/users", usersHandler)
     apiRouter.HandleFunc("/user/connect", userConnectHandler)
+    apiRouter.HandleFunc("/users", usersHandler)
+    apiRouter.HandleFunc("/users/simular", usersSimilarHandler)
     apiRouter.HandleFunc("/longtable", longTableHandler)
     apiRouter.HandleFunc("/longtables", longTablesHandler)
     apiRouter.HandleFunc("/longtable/booking", longTableBookingHandler)
@@ -269,6 +270,11 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             "imageURL":  imageURL,
         }
 
+        // Set user interests if exist
+        if interests, ok := r.Form["interests"]; ok {
+            user["interests"] = interests
+        }
+
         if user["id"], err = insertUser(user); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
@@ -285,6 +291,14 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
+}
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+    if err := logOut(w, r); err != nil {
+        log.Println(err)
+        w.WriteHeader(http.StatusInternalServerError)
+    }
+    w.WriteHeader(http.StatusOK)
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
@@ -350,7 +364,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             user["imageURL"] = destination
         }
 
-        // Update user interests if exist
+        // Set user interests if exist
         if interests, ok := r.Form["interests"]; ok {
             user["interests"] = interests
         }
@@ -365,46 +379,6 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
-}
-
-func usersHandler(w http.ResponseWriter, r *http.Request) {
-    switch r.Method {
-    case "GET":
-        var count int = 100
-        var err error
-
-        if count, err = strconv.Atoi(r.FormValue("count")); err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
-        }
-
-        params := map[string]interface{}{"count": count}
-        if interests, ok := r.Form["interests"]; ok {
-            params["interests"] = interests
-        }
-
-        if users, err := getUsers(params); err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        } else {
-            data, err := json.Marshal(users)
-            if err != nil {
-                http.Error(w, err.Error(), http.StatusInternalServerError)
-                return
-            }
-            w.Write(data)
-        }
-    default:
-        w.WriteHeader(http.StatusMethodNotAllowed)
-    }
-}
-
-func logoutHandler(w http.ResponseWriter, r *http.Request) {
-    if err := logOut(w, r); err != nil {
-        log.Println(err)
-        w.WriteHeader(http.StatusInternalServerError)
-    }
-    w.WriteHeader(http.StatusOK)
 }
 
 func userConnectHandler(w http.ResponseWriter, r *http.Request) {
@@ -459,6 +433,63 @@ func userConnectHandler(w http.ResponseWriter, r *http.Request) {
 
         w.WriteHeader(http.StatusOK)
 
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func usersHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        var count int = 100
+        var err error
+
+        if count, err = strconv.Atoi(r.FormValue("count")); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        params := map[string]interface{}{"count": count}
+        if interests, ok := r.Form["interests"]; ok {
+            params["interests"] = interests
+        }
+
+        if users, err := getUsers(params); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            data, err := json.Marshal(users)
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            w.Write(data)
+        }
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func usersSimilarHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        if users, err := user.similarUsers(); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            data, err := json.Marshal(users)
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            w.Write(data)
+        }
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
