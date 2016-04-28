@@ -454,12 +454,11 @@ func userConnectHandler(w http.ResponseWriter, r *http.Request) {
 func usersHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        var count int = 100
+        var count int
         var err error
 
         if count, err = strconv.Atoi(r.FormValue("count")); err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
+            count = 100
         }
 
         params := map[string]interface{}{"count": count}
@@ -636,12 +635,11 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
 func longTablesHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        var count int = 100
+        var count int
         var err error
 
         if count, err = strconv.Atoi(r.FormValue("count")); err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
+            count = 100
         }
 
         params := map[string]interface{}{"count": count}
