@@ -157,9 +157,13 @@ func updateUser(user User) (err error) {
     var args []interface{}
 
     if userID, ok := user["id"]; !ok {
-        return ErrTypeAssertionFailed
+        return ErrMissingKey
     } else {
-        args = append(args, fmt.Sprint("user:", userID))
+        if userID, ok := userID.(int); !ok {
+            return ErrTypeAssertionFailed
+        } else {
+            args = append(args, fmt.Sprint("user:", userID))
+        }
     }
 
     user["updatedAt"] = time.Now().Unix()
