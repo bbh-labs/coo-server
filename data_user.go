@@ -10,8 +10,9 @@ import (
 
 type User map[string]interface{}
 
+// Check if User exists, with an option to fetch the user
 func userExists(user User, fetch bool) (bool, User) {
-    // Check if the user exists and retrieve it
+    // Check if the User exists and retrieve it
 	if fetch {
         if user, err := getUser(user); err != nil {
             return false, nil
@@ -19,7 +20,7 @@ func userExists(user User, fetch bool) (bool, User) {
             return true, user
         }
 
-    // Just check if the user exists
+    // Just check if the User exists
 	} else {
         if ok, err := hasUser(user); err != nil {
             return false, nil
@@ -29,6 +30,7 @@ func userExists(user User, fetch bool) (bool, User) {
 	}
 }
 
+// Check if User exists
 func hasUser(user User) (bool, error) {
     if reply, err := db.Do("EXISTS", fmt.Sprint("user:", user["id"])); err != nil {
         return false, err
@@ -39,6 +41,7 @@ func hasUser(user User) (bool, error) {
     }
 }
 
+// Get User with specified parameters
 func getUser(user User) (User, error) {
     if userID, ok := user["id"]; !ok {
         return user, ErrMissingKey
@@ -72,6 +75,7 @@ func getUser(user User) (User, error) {
     return user, nil
 }
 
+// Insert User with specified parameters
 func insertUser(user User) (int, error) {
     var userID int
     if reply, err := db.Do("INCR", "nextUserID"); err != nil {
@@ -85,7 +89,7 @@ func insertUser(user User) (int, error) {
 
     now := time.Now().Unix()
 
-    // Set user
+    // Set User
     user["createdAt"] = now
     for k, v := range user {
         args = append(args, k, v)
@@ -95,12 +99,12 @@ func insertUser(user User) (int, error) {
     }
     user["id"] = userID
 
-    // Add user to users list
+    // Add User to users list
     if _, err := db.Do("ZADD", "users", now, userID); err != nil {
         return 0, err
     }
 
-    // Update user interests if exist
+    // Update User interests if exist
     if interests, ok := user["interests"]; ok {
         if interests, ok := interests.([]string); ok {
             if err := user.setInterests(interests); err != nil {
@@ -112,6 +116,7 @@ func insertUser(user User) (int, error) {
 	return userID, nil
 }
 
+// Delete User with specified parameters
 func deleteUser(user User) error {
     if _, err := db.Do("DECR", "nextUserID"); err != nil {
         return err
@@ -119,12 +124,12 @@ func deleteUser(user User) error {
 
     userID := user["id"]
 
-    // Delete user
+    // Delete User
     if _, err := db.Do("DEL", fmt.Sprint("user:", userID)); err != nil {
         return err
     }
 
-    // Remove user from users list
+    // Remove User from users list
     if _, err := db.Do("ZREM", "users", userID); err != nil {
         return err
     }
@@ -153,6 +158,7 @@ func deleteUser(user User) error {
     return nil
 }
 
+// Update User with specified parameters
 func updateUser(user User) (err error) {
     var args []interface{}
 
@@ -168,7 +174,7 @@ func updateUser(user User) (err error) {
 
     user["updatedAt"] = time.Now().Unix()
 
-    // Update user
+    // Update User
     for k, v := range user {
         args = append(args, k, v)
     }
@@ -176,7 +182,7 @@ func updateUser(user User) (err error) {
         return err
     }
 
-    // Update user interests if exist
+    // Update User interests if exist
     if interests, ok := user["interests"]; ok {
         if interests, ok := interests.([]string); ok {
             if err := user.setInterests(interests); err != nil {
@@ -188,6 +194,7 @@ func updateUser(user User) (err error) {
 	return nil
 }
 
+// Get Users matching specified parameters
 func getUsers(params map[string]interface{}) ([]User, error) {
     count := int(params["count"].(int))
 
@@ -208,6 +215,7 @@ func getUsers(params map[string]interface{}) ([]User, error) {
     return _getUsers("ZRANGE", "users", 0, count - 1)
 }
 
+// Get Users with specified raw Redis command
 func _getUsers(command string, args ...interface{}) ([]User, error) {
     var users []User
 
@@ -226,6 +234,7 @@ func _getUsers(command string, args ...interface{}) ([]User, error) {
     return users, nil
 }
 
+// Get User IDs with specified raw Redis command
 func _getUserIDs(command string, args ...interface{}) ([]int, error) {
     if reply, err := db.Do(command, args...); err != nil {
         return nil, err
@@ -236,6 +245,7 @@ func _getUserIDs(command string, args ...interface{}) ([]int, error) {
     }
 }
 
+// Add otherUser as current User's connection
 func (user User) addUser(otherUser User) error {
     now := time.Now().Unix()
     if _, err := db.Do("ZADD", fmt.Sprint("userConnections:", user["id"]), now, otherUser["id"]); err != nil {
@@ -247,6 +257,7 @@ func (user User) addUser(otherUser User) error {
     return nil
 }
 
+// Remove otherUser from current User's connection
 func (user User) removeUser(otherUser User) error {
     if _, err := db.Do("ZREM", fmt.Sprint("userConnections:", user["id"]), otherUser["id"]); err != nil {
         return err
@@ -257,6 +268,7 @@ func (user User) removeUser(otherUser User) error {
     return nil
 }
 
+// Get current User's connected users' IDs
 func (user User) otherUserIDs() ([]int, error) {
     if reply, err := db.Do("ZRANGE", fmt.Sprint("userConnections:", user["id"]), 0, -1); err != nil {
         return nil, err
@@ -267,6 +279,7 @@ func (user User) otherUserIDs() ([]int, error) {
     }
 }
 
+// Get Users with similar interests with current User
 func (user User) similarUsers() ([]User, error) {
     var allUsers []User
 
@@ -291,6 +304,7 @@ func (user User) similarUsers() ([]User, error) {
     }
 }
 
+// Get current User's interests
 func (user User) interests() ([]string, error) {
     if reply, err := db.Do("ZRANGE", fmt.Sprint("user:", user["id"], ":interests"), 0, -1); err != nil {
         if err == redis.ErrNil {
@@ -304,6 +318,7 @@ func (user User) interests() ([]string, error) {
     }
 }
 
+// Set current User's interests
 func (user User) setInterests(interests []string) error {
     if err := user.clearInterests(); err != nil {
         return err
@@ -321,6 +336,7 @@ func (user User) setInterests(interests []string) error {
     return nil
 }
 
+// Clear current User's interests
 func (user User) clearInterests() error {
     if interests, err := user.interests(); err == nil {
         // Delete interests
@@ -328,7 +344,7 @@ func (user User) clearInterests() error {
             return err
         }
 
-        // Remove user from interests
+        // Remove User from interests
         for _, interest := range interests {
             if _, err := db.Do("ZREM", fmt.Sprint("interest:", interest), user["id"]); err != nil {
                 return err

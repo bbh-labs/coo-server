@@ -29,6 +29,7 @@ func longTableBookingExists(longTableBooking LongTableBooking, fetch bool) (bool
 	}
 }
 
+// Check if LongTableBooking exists
 func hasLongTableBooking(longTableBooking LongTableBooking) (bool, error) {
     if reply, err := db.Do("EXISTS", fmt.Sprint("longTableBooking:", longTableBooking["id"])); err != nil {
         return false, err
@@ -39,6 +40,7 @@ func hasLongTableBooking(longTableBooking LongTableBooking) (bool, error) {
     }
 }
 
+// Get LongTableBooking with specified parameters
 func getLongTableBooking(longTableBooking LongTableBooking) (LongTableBooking, error) {
     if longTableBookingID, ok := longTableBooking["id"]; !ok {
         return longTableBooking, ErrMissingKey
@@ -66,6 +68,7 @@ func getLongTableBooking(longTableBooking LongTableBooking) (LongTableBooking, e
     return longTableBooking, nil
 }
 
+// Insert LongTableBooking with specified parameters
 func insertLongTableBooking(longTableBooking LongTableBooking) (int, error) {
     if !checkKeys(longTableBooking, "longTableID", "userID") {
         return 0, ErrMissingKey
@@ -106,6 +109,7 @@ func insertLongTableBooking(longTableBooking LongTableBooking) (int, error) {
 	return longTableBookingID, nil
 }
 
+// Delete LongTableBooking with specified parameters
 func deleteLongTableBooking(longTableBooking LongTableBooking) error {
     if !checkKeys(longTableBooking, "longTableID", "userID") {
         return ErrMissingKey
@@ -135,6 +139,7 @@ func deleteLongTableBooking(longTableBooking LongTableBooking) error {
     return nil
 }
 
+// Update LongTableBooking with specified parameters
 func updateLongTableBooking(longTableBooking LongTableBooking) (err error) {
     var args []interface{}
 
@@ -157,6 +162,7 @@ func updateLongTableBooking(longTableBooking LongTableBooking) (err error) {
 	return nil
 }
 
+// Get LongTableBookings matching specified parameters
 func getLongTableBookings(params map[string]interface{}) ([]LongTableBooking, error) {
     count := params["count"].(int)
 
@@ -169,6 +175,7 @@ func getLongTableBookings(params map[string]interface{}) ([]LongTableBooking, er
     return nil, ErrMissingKey
 }
 
+// Get LongTableBookings with specified raw Redis command
 func _getLongTableBookings(command string, args ...interface{}) ([]LongTableBooking, error) {
     var longTableBookings []LongTableBooking
 

@@ -113,6 +113,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Check if User is logged in
     if loggedIn, _ := loggedIn(w, r, true); loggedIn {
         switch authuser.Provider {
         case "facebook":
@@ -142,6 +143,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Check if User already exists
+    // If so, log her in
     if exists, user := userExists(user, true); exists {
         if err := logIn(w, r, user); err != nil {
             log.Println(err)
@@ -153,7 +156,6 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     name := strings.Split(authuser.Name, " ")
-
     if len(name) > 1 {
         user["firstname"] = strings.Join(name[:len(name)-1], " ")
         user["lastname"] = name[len(name)-1]
@@ -164,12 +166,14 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
     user["email"] = authuser.Email
     user["imageURL"] = authuser.AvatarURL
 
+    // Insert User
     if user["id"], err = insertUser(user); err != nil {
         log.Println(err)
         w.WriteHeader(http.StatusInternalServerError)
         return
     }
 
+    // Log User in
     if err := logIn(w, r, user); err != nil {
         log.Println(err)
         w.WriteHeader(http.StatusInternalServerError)
@@ -182,6 +186,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
+        // Check if User is logged in
         if ok, user := loggedIn(w, r, true); !ok {
             w.WriteHeader(http.StatusForbidden)
         } else {
@@ -194,6 +199,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         }
     case "POST":
         email := r.FormValue("email")
+
+        // Check email length
         if len(email) < 6 {
             w.WriteHeader(http.StatusBadRequest)
             w.Write([]byte("Email is too short"))
@@ -201,6 +208,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         password := r.FormValue("password")
+
+        // Check password length
         if len(password) < 8 {
             w.WriteHeader(http.StatusBadRequest)
             w.Write([]byte("Password is too short"))
@@ -209,6 +218,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 
         user := User{"email": email}
+
+        // Check if User exists
         if exists, user := userExists(user, true); exists {
             if err := bcrypt.CompareHashAndPassword(user["password"].([]byte), []byte(password)); err != nil {
                 w.WriteHeader(http.StatusForbidden)
@@ -232,12 +243,16 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
         email := r.FormValue("email")
+
+        // Check email length
         if len(email) < 6 {
             http.Error(w, ErrEmailTooShort.Error(), http.StatusBadRequest)
             return
         }
 
         password := r.FormValue("password")
+
+        // Check password length
         if len(password) < 8 {
             http.Error(w, ErrPasswordTooShort.Error(), http.StatusBadRequest)
             return
@@ -247,6 +262,8 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         lastname := r.FormValue("lastname")
 
         imageURL := ""
+
+        // Copy uploaded image to 'content' folder
         if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
@@ -255,6 +272,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             imageURL = destination
         }
 
+        // Generate hashed password
         hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
         if err != nil {
             log.Println(err)
@@ -262,6 +280,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        // Initialize User data
         user := User{
             "firstname": firstname,
             "lastname":  lastname,
@@ -270,17 +289,19 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             "imageURL":  imageURL,
         }
 
-        // Set user interests if exist
+        // Set User interests if exist
         if interests, ok := r.Form["interests"]; ok {
             user["interests"] = interests
         }
 
+        // Insert User
         if user["id"], err = insertUser(user); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
         }
 
+        // Log User in
         if err = logIn(w, r, user); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
@@ -294,6 +315,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
+    // Log User out
     if err := logOut(w, r); err != nil {
         log.Println(err)
         w.WriteHeader(http.StatusInternalServerError)
@@ -304,18 +326,19 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 func userHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "PATCH":
+        // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
         if !loggedIn {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
             return
         }
 
-        // Set user firstname and lastname
+        // Set User firstname and lastname
         user["firstname"] = r.FormValue("firstname")
         user["lastname"] = r.FormValue("lastname")
         user["email"] = r.FormValue("email")
 
-        // Check if user is updating password
+        // Check if User is updating password
         oldPassword := r.FormValue("old-password")
         newPassword := r.FormValue("new-password")
         if user["password"] != "" {
@@ -347,12 +370,13 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             }
         }
 
-        // Update user avatar if necessary
+        // Try to copy uploaded image to 'content' folder
         if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
         } else {
+            // Check if User previously has an image, if so remove it
             if imageURL, ok := user["imageURL"].(string); ok && imageURL != "" {
                 if err := os.Remove(imageURL); err != nil {
                     log.Println(err)
@@ -361,14 +385,17 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
+
+            // Successfully copied so set the destination path as the image URL
             user["imageURL"] = destination
         }
 
-        // Set user interests if exist
+        // Set User interests if exist
         if interests, ok := r.Form["interests"]; ok {
             user["interests"] = interests
         }
 
+        // Update User
         if err := updateUser(user); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
@@ -377,12 +404,14 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 
         w.WriteHeader(http.StatusOK)
     case "DELETE":
+        // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
         if !loggedIn {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
             return
         }
 
+        // Delete User
         if err := deleteUser(user); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -397,6 +426,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 func userConnectHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
+        // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
         if !loggedIn {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
@@ -406,6 +436,7 @@ func userConnectHandler(w http.ResponseWriter, r *http.Request) {
         var otherUserID int
         var err error
 
+        // Check if otherUserID query parameter is valid
         if otherUserID, err = strconv.Atoi(r.FormValue("otherUserID")); err != nil {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
             return
@@ -414,6 +445,7 @@ func userConnectHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        // Add the other User as new connection of current User
         if err = user.addUser(User{"id": otherUserID}); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -422,15 +454,17 @@ func userConnectHandler(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusOK)
 
     case "DELETE":
+        var otherUserID int
+        var err error
+
+        // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
         if !loggedIn {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
             return
         }
 
-        var otherUserID int
-        var err error
-
+        // Check if otherUserID query parameter is valid
         if otherUserID, err = strconv.Atoi(r.FormValue("otherUserID")); err != nil {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
             return
@@ -439,6 +473,7 @@ func userConnectHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        // Remove other User from current User's connection
         if err = user.removeUser(User{"id": otherUserID}); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -457,15 +492,20 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
         var count int
         var err error
 
+        // Set default 'count' if not set by the query
         if count, err = strconv.Atoi(r.FormValue("count")); err != nil {
             count = 100
         }
 
+        // Prepare parameters
         params := map[string]interface{}{"count": count}
+
+        // Set 'interests' parameter if exists
         if interests, ok := r.Form["interests"]; ok {
             params["interests"] = interests
         }
 
+        // Get Users that match the parameters
         if users, err := getUsers(params); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -485,12 +525,14 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
 func usersSimilarHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
+        // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
         if !loggedIn {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
             return
         }
 
+        // Get similar Users
         if users, err := user.similarUsers(); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -511,6 +553,8 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
         longTable := LongTable{}
+
+        // Check if 'id' query parameter is valid
         if id, err := strconv.Atoi(r.FormValue("id")); err != nil {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
@@ -518,19 +562,21 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             longTable["id"] = id
         }
 
+        // Get LongTable with set 'id'
         if _, err := getLongTable(longTable); err != nil {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
+        } else {
+            data, err := json.Marshal(longTable)
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            w.Write(data)
         }
-
-        data, err := json.Marshal(longTable)
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-        w.Write(data)
 
     case "POST":
+        // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
         if !loggedIn {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
@@ -538,12 +584,17 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         name := r.FormValue("name")
-        if len(name) == 0 {
+
+        // Check if 'name' query parameter is valid
+        if name == "" {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
         }
 
+        // Initialize LongTable
         longTable := LongTable{"userID": user["id"], "name": name}
+
+        // Check if 'numSeats' query parameter is valid
         if numSeats, err := strconv.Atoi(r.FormValue("numSeats")); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
@@ -551,6 +602,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             longTable["numSeats"] = numSeats
         }
 
+        // Check if 'openingTime' query parameter is valid
         openingTime := r.FormValue("openingTime")
         if _, err := time.Parse("15:04", openingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
@@ -559,6 +611,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             longTable["openingTime"] = openingTime
         }
 
+        // Check if 'closingTime' query parameter is valid
         closingTime := r.FormValue("closingTime")
         if _, err := time.Parse("15:04", closingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
@@ -567,6 +620,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             longTable["closingTime"] = closingTime
         }
 
+        // Insert LongTable
         if longTableID, err := insertLongTable(longTable); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -575,12 +629,14 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
         }
 
     case "PATCH":
+        // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
         if !loggedIn {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
             return
         }
 
+        // Initialize LongTable
         longTable := LongTable{"userID": user["id"]}
         if id, err := strconv.Atoi(r.FormValue("id")); err != nil {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
@@ -590,13 +646,16 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         name := r.FormValue("name")
-        if len(name) == 0 {
+
+        // Check if 'name' query parameter is valid
+        if name == "" {
             http.Error(w, ErrEmptyParameter.Error(), http.StatusBadRequest)
             return
         } else {
             longTable["name"] = name
         }
 
+        // Check if 'numSeats' query parameter is valid
         if numSeats, err := strconv.Atoi(r.FormValue("numSeats")); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
@@ -604,6 +663,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             longTable["numSeats"] = numSeats
         }
 
+        // Check if 'openingTime' query parameter is valid
         openingTime := r.FormValue("openingTime")
         if _, err := time.Parse("15:04", openingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
@@ -612,6 +672,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             longTable["openingTime"] = openingTime
         }
 
+        // Check if 'closingTime' query parameter is valid
         closingTime := r.FormValue("closingTime")
         if _, err := time.Parse("15:04", closingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
@@ -620,6 +681,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             longTable["closingTime"] = closingTime
         }
 
+        // Update LongTable
         if err := updateLongTable(longTable); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
@@ -638,12 +700,15 @@ func longTablesHandler(w http.ResponseWriter, r *http.Request) {
         var count int
         var err error
 
+        // Set default 'count' if not set by the query
         if count, err = strconv.Atoi(r.FormValue("count")); err != nil {
             count = 100
         }
 
+        // Prepare parameters
         params := map[string]interface{}{"count": count}
 
+        // Get longtables that match the parameters
         if longTables, err := getLongTables(params); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -667,13 +732,17 @@ func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
         var longTableID, seatPosition int
         var err error
 
+        // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
         if !loggedIn {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
             return
         }
 
+        // Initialize LongTableBooking
         longTableBooking := LongTableBooking{"userID": user["id"]}
+
+        // Check if 'seatPosition' query parameter is valid
         if seatPosition, err = strconv.Atoi(r.FormValue("seatPosition")); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
@@ -681,10 +750,12 @@ func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
             longTableBooking["seatPosition"] = seatPosition
         }
 
+        // Check if 'longTableID' query parameter is valid
         if longTableID, err = strconv.Atoi(r.FormValue("longTableID")); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
+            // Get LongTable with set 'longTableID'
             if longTable, err := getLongTable(LongTable{"id": longTableID}); err != nil {
                 http.Error(w, err.Error(), http.StatusInternalServerError)
                 return
@@ -701,6 +772,7 @@ func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
             longTableBooking["longTableID"] = longTableID
         }
 
+        // Insert LongTableBooking
         if longTableBookingID, err := insertLongTableBooking(longTableBooking); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -713,6 +785,7 @@ func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
+// Copy file from request to local destination
 func copyFile(r *http.Request, name string, folder, filename string) (destination string, err error) {
     var fileheader *multipart.FileHeader
 
@@ -752,6 +825,7 @@ func copyFile(r *http.Request, name string, folder, filename string) (destinatio
     return
 }
 
+// Generates randomized filename
 func randomFilename() string {
     cmd := exec.Command("openssl", "rand", "-base64", "64")
 
@@ -769,6 +843,7 @@ func randomFilename() string {
     return string(output)
 }
 
+// Check if map has specified keys
 func checkKeys(m map[string]interface{}, args ...string) bool {
     for _, key := range args {
         if _, ok := m[key]; !ok {

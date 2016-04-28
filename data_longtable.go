@@ -10,8 +10,9 @@ import (
 
 type LongTable map[string]interface{}
 
+// Check if LongTable exists, with an option to fetch the user
 func longTableExists(longTable LongTable, fetch bool) (bool, LongTable) {
-    // Check if the longTable exists and retrieve it
+    // Check if the LongTable exists and retrieve it
 	if fetch {
         if longTable, err := getLongTable(longTable); err != nil {
             return false, nil
@@ -19,7 +20,7 @@ func longTableExists(longTable LongTable, fetch bool) (bool, LongTable) {
             return true, longTable
         }
 
-    // Just check if the longTable exists
+    // Just check if the LongTable exists
 	} else {
         if ok, err := hasLongTable(longTable); err != nil {
             return false, nil
@@ -29,6 +30,7 @@ func longTableExists(longTable LongTable, fetch bool) (bool, LongTable) {
 	}
 }
 
+// Check if LongTable exists
 func hasLongTable(longTable LongTable) (bool, error) {
     if reply, err := db.Do("EXISTS", fmt.Sprint("longTable:", longTable["id"])); err != nil {
         return false, err
@@ -39,6 +41,7 @@ func hasLongTable(longTable LongTable) (bool, error) {
     }
 }
 
+// Get LongTable with specified parameters
 func getLongTable(longTable LongTable) (LongTable, error) {
     if longTableID, ok := longTable["id"]; !ok {
         return longTable, ErrMissingKey
@@ -66,6 +69,7 @@ func getLongTable(longTable LongTable) (LongTable, error) {
     return longTable, nil
 }
 
+// Insert LongTable with specified parameters
 func insertLongTable(longTable LongTable) (int, error) {
     var longTableID int
     if reply, err := db.Do("INCR", "nextLongTableID"); err != nil {
@@ -97,6 +101,7 @@ func insertLongTable(longTable LongTable) (int, error) {
 	return longTableID, nil
 }
 
+// Delete LongTable with specified parameters
 func deleteLongTable(longTable LongTable) error {
     if _, err := db.Do("DECR", "nextLongTableID"); err != nil {
         return err
@@ -122,6 +127,7 @@ func deleteLongTable(longTable LongTable) error {
     return nil
 }
 
+// Update LongTable with specified parameters
 func updateLongTable(longTable LongTable) (err error) {
     var args []interface{}
 
@@ -144,12 +150,14 @@ func updateLongTable(longTable LongTable) (err error) {
 	return nil
 }
 
+// Get LongTables matching specified parameters
 func getLongTables(params map[string]interface{}) ([]LongTable, error) {
     count := params["count"].(int)
 
     return _getLongTables("ZRANGE", "longTables", 0, count - 1)
 }
 
+// Get LongTables with specified raw Redis command
 func _getLongTables(command string, args ...interface{}) ([]LongTable, error) {
     var longTables []LongTable
 
