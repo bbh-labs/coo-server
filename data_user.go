@@ -269,11 +269,16 @@ func (user User) similarUsers() ([]User, error) {
     if interests, err := user.interests(); err != nil {
         return nil, err
     } else {
-
         for _, interest := range interests {
             if users, err := _getUsers("ZRANGE", fmt.Sprint("interest:", interest), 0, -1); err != nil {
                 return nil, err
             } else {
+                for k, v := range users {
+                    if v["id"] == user["id"] {
+                        users = append(users[:k], users[k+1:]...)
+                        break
+                    }
+                }
                 allUsers = append(allUsers, users...)
             }
         }
