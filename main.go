@@ -105,7 +105,16 @@ func main() {
 
     // If running test server, set up template handlers
     if *test {
-        templates = template.Must(template.ParseGlob("test/*.html"))
+        funcMap := template.FuncMap{
+            "longtables": func(count int) []LongTable {
+                if longTables, err := getLongTables(map[string]interface{}{"count": count}); err != nil {
+                    return nil
+                } else {
+                    return longTables
+                }
+            },
+        }
+        templates = template.Must(template.New("main").Funcs(funcMap).ParseGlob("test/*.html"))
         setupTemplateHandlers(router)
     }
 
@@ -472,11 +481,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        if *test {
-            http.Redirect(w, r, "/profile", http.StatusTemporaryRedirect)
-        } else {
             w.WriteHeader(http.StatusOK)
-        }
     case "DELETE":
         // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
@@ -699,7 +704,11 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         } else {
-            w.Write([]byte(strconv.Itoa(longTableID)))
+            if *test {
+                http.Redirect(w, r, "/longtable", http.StatusTemporaryRedirect)
+            } else {
+                w.Write([]byte(strconv.Itoa(longTableID)))
+            }
         }
 
     case "PATCH":

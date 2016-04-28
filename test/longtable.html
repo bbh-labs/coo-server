@@ -15,7 +15,42 @@
     <a href='/api/logout'>Log Out</a>
     <hr />
 
+    <ul>
+    {{ range $k, $longtable := longtables 0 }}
+        <div>
+            LongTable #{{ $longtable.id }}
+        </div>
+    {{ end }}
+    </ul>
 
+    {{ if eq .privilege "admin" }}
+    <form action='/api/longtable' method='POST'>
+        <div>
+            <label>Name
+                <input type='text' name='name' />
+            </label>
+        </div>
+        <div>
+            <label>Num. Seats
+                <input type='range' name='numSeats' />
+                <output for='numSeats' onforminput='value = numSeats.valueAsNumber;'></output>
+            </label>
+        </div>
+        <div>
+            <label>Opening Time
+                <input type='time' name='openingTime' />
+            </label>
+        </div>
+        <div>
+            <label>Closing Time
+                <input type='time' name='closingTime' />
+            </label>
+        </div>
+        <div>
+            <button type='submit'>Create a LongTable</button>
+        </div>
+    </form>
+    {{ end }}
 </body>
 </html>
 
