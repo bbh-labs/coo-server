@@ -112,7 +112,7 @@ func main() {
     // Run web server
     var n *negroni.Negroni
     if *test {
-        n = negroni.New(negroni.NewRecovery(), negroni.NewLogger())
+        n = negroni.New(negroni.NewRecovery(), negroni.NewLogger(), negroni.NewStatic(http.Dir("test/public")))
     } else {
         n = negroni.Classic()
     }
@@ -134,6 +134,24 @@ func setupTemplateHandlers(router *mux.Router) {
     router.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
         if loggedIn, user := loggedIn(w, r, true); loggedIn {
             templates.ExecuteTemplate(w, "dashboard", user)
+        } else {
+            http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+        }
+    })
+
+    // Profile
+    router.HandleFunc("/profile", func(w http.ResponseWriter, r *http.Request) {
+        if loggedIn, user := loggedIn(w, r, true); loggedIn {
+            templates.ExecuteTemplate(w, "profile", user)
+        } else {
+            http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+        }
+    })
+
+    // LongTable
+    router.HandleFunc("/longtable", func(w http.ResponseWriter, r *http.Request) {
+        if loggedIn, user := loggedIn(w, r, true); loggedIn {
+            templates.ExecuteTemplate(w, "longtable", user)
         } else {
             http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
         }
@@ -307,12 +325,12 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         imageURL := ""
 
         // Copy uploaded image to 'content' folder
-        if r.Header["Content-Type"][0] == "multipart/form-data" {
+        if strings.HasPrefix(r.Header["Content-Type"][0], "multipart/form-data") {
             if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
-            } else {
+            } else if destination != "" {
                 imageURL = destination
             }
         }
@@ -379,6 +397,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
+    case "POST": fallthrough
     case "PATCH":
         // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)
@@ -399,7 +418,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             // Process valid input (both passwords are at least the minimum length)
             if len(oldPassword) >= 8 && len(newPassword) >= 8 {
                 // Check if old password matches
-                if err := bcrypt.CompareHashAndPassword(user["password"].([]byte), []byte(oldPassword)); err != nil {
+                if err := bcrypt.CompareHashAndPassword([]byte(user["password"].(string)), []byte(oldPassword)); err != nil {
                     w.WriteHeader(http.StatusBadRequest)
                     return
                 }
@@ -417,31 +436,28 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             } else if len(oldPassword) > 0 && len(newPassword) > 0 {
                 w.WriteHeader(http.StatusBadRequest)
                 return
-
-            // Ignore input (at least one of the two passwords is empty)
-            } else {
-                user["password"] = ""
             }
         }
 
-        // Try to copy uploaded image to 'content' folder
-        if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        } else {
-            // Check if User previously has an image, if so remove it
-            if imageURL, ok := user["imageURL"].(string); ok && imageURL != "" {
-                if err := os.Remove(imageURL); err != nil {
-                    log.Println(err)
-                }
-            } else {
+        if strings.HasPrefix(r.Header["Content-Type"][0], "multipart/form-data") {
+            // Try to copy uploaded image to 'content' folder
+            if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
+                log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
-            }
+            } else if destination != "" {
+                // Check if User previously has an image, if so remove it
+                if imageURL, ok := user["imageURL"]; ok {
+                    if imageURL, ok := imageURL.(string); ok && imageURL != "" {
+                        if err := os.Remove(imageURL); err != nil {
+                            log.Println(err)
+                        }
+                    }
 
-            // Successfully copied so set the destination path as the image URL
-            user["imageURL"] = destination
+                    // Successfully copied so set the destination path as the image URL
+                    user["imageURL"] = destination
+                }
+            }
         }
 
         // Set User interests if exist
@@ -456,7 +472,11 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        w.WriteHeader(http.StatusOK)
+        if *test {
+            http.Redirect(w, r, "/profile", http.StatusTemporaryRedirect)
+        } else {
+            w.WriteHeader(http.StatusOK)
+        }
     case "DELETE":
         // Check if User is logged in
         loggedIn, user := loggedIn(w, r, true)

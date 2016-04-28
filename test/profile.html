@@ -1,0 +1,71 @@
+{{ define "profile" }}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>COO | Profile</title>
+    <meta charset='utf-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+</head>
+<body>
+    <p>Hello, {{ .firstname }} {{ with .imageURL }} <img src='{{ . }}' /> {{ end }}</p>
+    <a href='/dashboard'>Dashboard</a>
+    <a href='/profile'>Profile</a>
+    <a href='/longtable'>LongTable</a>
+    <a href='/api/logout'>Log Out</a>
+    <hr />
+
+    <form action='/api/user' method='POST' enctype='multipart/form-data'>
+        <div>
+            <label>Firstname
+                <input type='text' name='firstname' value='{{ .firstname }}' />
+            </label>
+        </div>
+        <div>
+            <label>Lastname
+                <input type='text' name='lastname' value='{{ .lastname }}' />
+            </label>
+        </div>
+        <div>
+            <label>Email
+                <input type='email' name='email' value='{{ .email }}' />
+            </label>
+        </div>
+        <div>
+            <label>Old Password
+                <input type='password' name='old-password' />
+            </label>
+        </div>
+        <div>
+            <label>New Password
+                <input type='password' name='new-password' />
+            </label>
+        </div>
+        <div>
+            <label>Image
+                <input type='file' name='image' />
+            </label>
+        </div>
+        <div>
+            <label>Interests
+                <input type='checkbox' name='interests' value='photography' {{ if .InterestedIn "photography" }} checked {{ end }}>Photography</option>
+                <input type='checkbox' name='interests' value='travelling' {{ if .InterestedIn "travelling" }} checked {{ end }}>Travelling</option>
+                <input type='checkbox' name='interests' value='music' {{ if .InterestedIn "music" }} checked {{ end }}>Music</option>
+                <input type='checkbox' name='interests' value='drawing' {{ if .InterestedIn "drawing" }} checked {{ end }}>Drawing</option>
+                <input type='checkbox' name='interests' value='foods' {{ if .InterestedIn "foods" }} checked {{ end }}>Foods</option>
+                <input type='checkbox' name='interests' value='sports' {{ if .InterestedIn "sports" }} checked {{ end }}>Sports</option>
+                <input type='checkbox' name='interests' value='computers' {{ if .InterestedIn "computers" }} checked {{ end }}>Computers</option>
+                <input type='checkbox' name='interests' value='video-games' {{ if .InterestedIn "video-games" }} checked {{ end }}>Video Games</option>
+                <input type='checkbox' name='interests' value='reading' {{ if .InterestedIn "reading" }} checked {{ end }}>Reading</option>
+                <input type='checkbox' name='interests' value='electronics' {{ if .InterestedIn "electronics" }} checked {{ end }}>Electronics</option>
+            </label>
+        </div>
+        <div>
+            <button type='submit'>Update</button>
+        </div>
+    </form>
+</body>
+</html>
+
+{{ end }}
+

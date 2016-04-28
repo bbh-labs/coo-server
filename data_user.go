@@ -100,6 +100,10 @@ func insertUser(user User) (int, error) {
     // Set User
     user["createdAt"] = now
     for k, v := range user {
+        // Ignore 'interests' as it's stored as separate sorted set
+        if k == "interests" {
+            continue
+        }
         args = append(args, k, v)
     }
     if _, err := db.Do("HMSET", args...); err != nil {
@@ -204,6 +208,10 @@ func updateUser(user User) (err error) {
 
     // Update User
     for k, v := range user {
+        // Ignore 'interests' as it's stored as separate sorted set
+        if k == "interests" {
+            continue
+        }
         args = append(args, k, v)
     }
     if _, err := db.Do("HMSET", args...); err != nil {
@@ -418,7 +426,7 @@ func (user User) clearInterests() error {
     return nil
 }
 
-func (user User) email() (string, error) {
+func (user User) emailAddress() (string, error) {
     if reply, err := db.Do("HGET", fmt.Sprint("user:", user["id"]), "email"); err != nil {
         return "", err
     } else if email, err := redis.String(reply, err); err != nil {
@@ -443,4 +451,17 @@ func (user User) deleteEmailReference() error {
         return err
     }
     return nil
+}
+
+func (user User) InterestedIn(interest string) bool {
+    if interests, ok := user["interests"]; ok {
+        if interests, ok := interests.([]string); ok {
+            for _, v := range interests {
+                if v == interest {
+                    return true
+                }
+            }
+        }
+    }
+    return false
 }
