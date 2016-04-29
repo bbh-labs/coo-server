@@ -14,6 +14,23 @@
     <a href='/longtable'>LongTable</a>
     <a href='/api/logout'>Log Out</a>
     <hr />
+
+    <div>
+        <h3>LongTable Bookings</h3>
+    </div>
+
+    <div>
+        <h3>Similar Users</h3>
+        {{ with .SimilarUsers }}
+            <ul>
+            {{ range $k, $user := . }}
+                <li>{{ $user.firstname }} {{ $user.lastname }}</li>
+            {{ end }}
+            </ul>
+        {{ else }}
+            <p>No similar users..</p>
+        {{ end }}
+    </div>
 </body>
 </html>
 

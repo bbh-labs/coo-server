@@ -465,3 +465,7 @@ func (user User) InterestedIn(interest string) bool {
     }
     return false
 }
+
+func (user User) SimilarUsers() ([]User, error) {
+    return user.similarUsers()
+}
