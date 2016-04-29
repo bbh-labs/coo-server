@@ -52,12 +52,15 @@ func getLongTableBooking(longTableBooking LongTableBooking) (LongTableBooking, e
         } else {
             for k, v := range retrievedLongTableBooking {
                 switch k {
-                case "id":
-                    longTableBookingID, err := strconv.Atoi(v)
+                case "id": fallthrough
+                case "userID": fallthrough
+                case "longTableID": fallthrough
+                case "seatPosition":
+                    value, err := strconv.Atoi(v)
                     if err != nil {
                         return longTableBooking, err
                     }
-                    longTableBooking[k] = longTableBookingID
+                    longTableBooking[k] = value
                 default:
                     longTableBooking[k] = v
                 }
@@ -111,28 +114,31 @@ func insertLongTableBooking(longTableBooking LongTableBooking) (int, error) {
 
 // Delete LongTableBooking with specified parameters
 func deleteLongTableBooking(longTableBooking LongTableBooking) error {
-    if !hasKeys(longTableBooking, "longTableID", "userID") {
-        return ErrMissingKey
-    }
+    var userID int
+    var err error
 
-    if _, err := db.Do("DECR", "nextLongTableBookingID"); err != nil {
+    userID = longTableBooking["userID"].(int)
+
+    if longTableBooking, err = getLongTableBooking(longTableBooking); err != nil {
         return err
+    } else if userID != longTableBooking["userID"].(int) {
+        return ErrPermissionDenied
     }
 
     longTableBookingID := longTableBooking["id"]
 
     // Delete longTableBooking
-    if _, err := db.Do("DEL", fmt.Sprint("longTableBooking:", longTableBookingID)); err != nil {
+    if _, err = db.Do("DEL", fmt.Sprint("longTableBooking:", longTableBookingID)); err != nil {
         return err
     }
 
     // Remove longTableBooking from longTableBookings list
-    if _, err := db.Do("ZREM", fmt.Sprint("longTableBookings:", longTableBooking["longTableID"]), longTableBookingID); err != nil {
+    if _, err = db.Do("ZREM", fmt.Sprint("longTableBookings:", longTableBooking["longTableID"]), longTableBookingID); err != nil {
         return err
     }
 
     // Remove longTableBooking from userLongTableBookings list
-    if _, err := db.Do("ZREM", fmt.Sprint("userLongTableBookings:", longTableBooking["userID"]), longTableBookingID); err != nil {
+    if _, err = db.Do("ZREM", fmt.Sprint("userLongTableBookings:", longTableBooking["userID"]), longTableBookingID); err != nil {
         return err
     }
 
@@ -164,7 +170,24 @@ func updateLongTableBooking(longTableBooking LongTableBooking) (err error) {
 
 // Get LongTableBookings matching specified parameters
 func getLongTableBookings(params map[string]interface{}) ([]LongTableBooking, error) {
-    count := params["count"].(int)
+    var count int
+
+    if _count, ok := params["count"]; ok {
+        switch v := _count.(type) {
+        case int:
+            count = v
+        case string:
+            if v == "" {
+                count = 100
+            } else {
+                if _count, err := strconv.Atoi(v); err != nil {
+                    return nil, err
+                } else {
+                    count = _count
+                }
+            }
+        }
+    }
 
     if longTableID, ok := params["longTableID"]; ok {
         return _getLongTableBookings("ZRANGE", fmt.Sprint("longTableBookings:", longTableID), 0, count - 1)

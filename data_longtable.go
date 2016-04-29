@@ -53,12 +53,13 @@ func getLongTable(longTable LongTable) (LongTable, error) {
         } else {
             for k, v := range retrievedLongTable {
                 switch k {
-                case "id":
-                    longTableID, err := strconv.Atoi(v)
+                case "id": fallthrough
+                case "numSeats":
+                    value, err := strconv.Atoi(v)
                     if err != nil {
                         return longTable, err
                     }
-                    longTable[k] = longTableID
+                    longTable[k] = value
                 default:
                     longTable[k] = v
                 }
@@ -103,10 +104,6 @@ func insertLongTable(longTable LongTable) (int, error) {
 
 // Delete LongTable with specified parameters
 func deleteLongTable(longTable LongTable) error {
-    if _, err := db.Do("DECR", "nextLongTableID"); err != nil {
-        return err
-    }
-
     longTableID := longTable["id"]
 
     // Delete longTable
@@ -176,4 +173,43 @@ func _getLongTables(command string, args ...interface{}) ([]LongTable, error) {
     }
 
     return longTables, nil
+}
+
+func (longTable LongTable) Seats() []int {
+    seats := make([]int, longTable["numSeats"].(int))
+    for i := 0; i < len(seats); i++ {
+        seats[i] = i
+    }
+    return seats
+}
+
+func (longTable LongTable) AvailableSeats() []int {
+    seats := longTable.Seats()
+    takenSeats := []int{}
+    if bookings, err := getLongTableBookings(map[string]interface{}{"longTableID": longTable["id"]}); err != nil {
+        return nil
+    } else {
+        for _, booking := range bookings {
+            if seatPosition, ok := booking["seatPosition"]; ok {
+                pos := seatPosition.(int)
+                takenSeats = append(takenSeats, pos)
+            }
+        }
+
+        availableSeats := []int{}
+        for i := range seats {
+            taken := false
+            for _, j := range takenSeats {
+                if i == j {
+                    taken = true
+                    break
+                }
+            }
+            if !taken {
+                availableSeats = append(availableSeats, i)
+            }
+        }
+
+        return availableSeats
+    }
 }

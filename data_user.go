@@ -75,6 +75,49 @@ func getUser(user User) (User, error) {
         user["interests"] = interests
     }
 
+    if connections, err := user.Connections(); err != nil {
+        return nil, err
+    } else {
+        user["connections"] = connections
+    }
+
+    return user, nil
+}
+
+// Get User with specified parameters without connections
+func getUserWithoutConnections(user User) (User, error) {
+    var err error
+
+    ok, key := hasKey(user, "id", "email")
+    if !ok {
+        return nil, ErrMissingKey
+    }
+
+    switch key {
+    case "id":
+        user, err = _getUser("HGETALL", fmt.Sprint("user:", user["id"]))
+    case "email":
+        var reply interface{}
+        var userID int
+
+        if reply, err = db.Do("GET", fmt.Sprint("user:email:", user["email"])); err != nil {
+            return nil, err
+        } else if userID, err = redis.Int(reply, err); err != nil {
+            return nil, err
+        } else {
+            user, err = _getUser("HGETALL", fmt.Sprint("user:", userID))
+        }
+    }
+    if err != nil {
+        return nil, err
+    }
+
+    if interests, err := user.interests(); err != nil {
+        return nil, err
+    } else {
+        user["interests"] = interests
+    }
+
     return user, nil
 }
 
@@ -235,7 +278,7 @@ func updateUser(user User) (err error) {
 
 // Get Users matching specified parameters
 func getUsers(params map[string]interface{}) ([]User, error) {
-    count := int(params["count"].(int))
+    count := params["count"].(int)
 
     if interests, ok := params["interests"].([]string); ok {
         var allUsers []User
@@ -244,7 +287,11 @@ func getUsers(params map[string]interface{}) ([]User, error) {
             if users, err := _getUsers("ZRANGE", fmt.Sprint("interest:", interest), 0, count - 1); err != nil {
                 return nil, err
             } else {
-                allUsers = append(allUsers, users...)
+                for _, user := range users {
+                    if !containsUser(allUsers, user) {
+                        allUsers = append(allUsers, user)
+                    }
+                }
             }
         }
 
@@ -289,10 +336,11 @@ func _getUsers(command string, args ...interface{}) ([]User, error) {
     } else {
         for _, userID := range userIDs {
             user := User{"id": userID}
-            if _, err = getUser(user); err != nil {
+            if user, err = getUser(user); err != nil {
                 return nil, err
+            } else {
+                users = append(users, user)
             }
-            users = append(users, user)
         }
     }
 
@@ -308,6 +356,16 @@ func _getUserIDs(command string, args ...interface{}) ([]int, error) {
     } else {
         return userIDs, nil
     }
+}
+
+// Check if []Users contains User
+func containsUser(users []User, user User) bool {
+    for _, u := range users {
+        if u["id"] == user["id"] {
+            return true
+        }
+    }
+    return false
 }
 
 func (user User) set(key, value string) error {
@@ -358,31 +416,6 @@ func (user User) otherUserIDs() ([]int, error) {
         return nil, err
     } else {
         return userIDs, nil
-    }
-}
-
-// Get Users with similar interests with current User
-func (user User) similarUsers() ([]User, error) {
-    var allUsers []User
-
-    if interests, err := user.interests(); err != nil {
-        return nil, err
-    } else {
-        for _, interest := range interests {
-            if users, err := _getUsers("ZRANGE", fmt.Sprint("interest:", interest), 0, -1); err != nil {
-                return nil, err
-            } else {
-                for k, v := range users {
-                    if v["id"] == user["id"] {
-                        users = append(users[:k], users[k+1:]...)
-                        break
-                    }
-                }
-                allUsers = append(allUsers, users...)
-            }
-        }
-
-        return allUsers, nil
     }
 }
 
@@ -468,6 +501,30 @@ func (user User) deleteEmailReference() error {
     return nil
 }
 
+func (user User) longTableBookings() ([]LongTableBooking, error) {
+    return getLongTableBookings(map[string]interface{}{"userID": user["id"]})
+}
+
+func (user User) Connections() ([]User, error) {
+    var users []User
+
+    if userIDs, err := _getUserIDs("ZRANGE", fmt.Sprint("userConnections:", user["id"]), 0, 100); err != nil {
+        return nil, err
+    } else {
+        for _, userID := range userIDs {
+            user := User{"id": userID}
+
+            if user, err = getUserWithoutConnections(user); err != nil {
+                return nil, err
+            } else {
+                users = append(users, user)
+            }
+        }
+    }
+
+    return users, nil
+}
+
 func (user User) InterestedIn(interest string) bool {
     if interests, ok := user["interests"]; ok {
         if interests, ok := interests.([]string); ok {
@@ -481,6 +538,34 @@ func (user User) InterestedIn(interest string) bool {
     return false
 }
 
+func (user User) LongTableBookings() ([]LongTableBooking, error) {
+    return user.longTableBookings()
+}
+
 func (user User) SimilarUsers() ([]User, error) {
-    return user.similarUsers()
+    if interests, err := user.interests(); err != nil {
+        return nil, err
+    } else {
+        var allUsers []User
+
+        if users, err := getUsers(map[string]interface{}{
+            "count": 0,
+            "interests": interests,
+        }); err != nil {
+            return nil, err
+        } else {
+            for k := range users {
+                if users[k]["id"] != user["id"] {
+                    allUsers = append(allUsers, users[k])
+                }
+            }
+            return allUsers, nil
+        }
+    }
+}
+
+func (user User) IsConnectedTo(otherUser User) bool {
+    reply, err := db.Do("ZSCORE", fmt.Sprint("userConnections:", user["id"]), otherUser["id"])
+    _, err = redis.Int(reply, err)
+    return err == nil
 }

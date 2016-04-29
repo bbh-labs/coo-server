@@ -25,7 +25,7 @@ func (setter *Setter) setDate(m map[string]interface{}, key, value string) {
         if _, err := parseDate(value); err != nil {
             setter.err = err
         } else {
-            m[key] = err
+            m[key] = value
         }
     }
 }

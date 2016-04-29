@@ -8,49 +8,41 @@
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
 </head>
 <body>
-    <p>Hello, {{ .firstname }}</p>
+    <p>Hello, {{ .user.firstname }}</p>
     <a href='/dashboard'>Dashboard</a>
     <a href='/profile'>Profile</a>
-    <a href='/longtable'>LongTable</a>
+    <a href='/longtables'>Longtables</a>
     <a href='/api/logout'>Log Out</a>
     <hr />
 
-    <ul>
-    {{ range $k, $longtable := longtables 0 }}
-        <div>
-            LongTable #{{ $longtable.id }}
-        </div>
-    {{ end }}
-    </ul>
+    <h3>{{ .longtable.name }}</h3>
 
-    {{ if eq .privilege "admin" }}
-    <form action='/api/longtable' method='POST'>
-        <div>
-            <label>Name
-                <input type='text' name='name' />
-            </label>
-        </div>
-        <div>
-            <label>Num. Seats
-                <input type='range' name='numSeats' />
-                <output for='numSeats' onforminput='value = numSeats.valueAsNumber;'></output>
-            </label>
-        </div>
-        <div>
-            <label>Opening Time
-                <input type='time' name='openingTime' />
-            </label>
-        </div>
-        <div>
-            <label>Closing Time
-                <input type='time' name='closingTime' />
-            </label>
-        </div>
-        <div>
-            <button type='submit'>Create a LongTable</button>
-        </div>
-    </form>
-    {{ end }}
+    <div>
+        <h4>Available Seats</h4>
+        {{ with .longtable }}
+            {{ range .AvailableSeats }}
+                <button disabled>{{ . }}</button>
+            {{ end }}
+
+            <form action='/api/longtable/booking' method='POST'>
+                <div>
+                    <label>Seat Position
+                        <input type='range' name='seatPosition' max='{{ minus .numSeats 1 }}' />
+                    </label>
+                </div>
+                <div>
+                    <label>Date
+                        <input type='date' name='date' />
+                    </label>
+                </div>
+                <div>
+                    <input type='hidden' name='longTableID' value='{{ .id }}' />
+                    <button type='submit'>Book</button>
+                </div>
+            </form>
+        {{ end }}
+    </div>
+
 </body>
 </html>
 

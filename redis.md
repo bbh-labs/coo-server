@@ -63,8 +63,9 @@ INCR nextLongTableBookingID
 HMSET longTableBooking:[longTableBooking]
     id           (int)
     userID       (int)
-    longtableID  (int)
+    longTableID  (int)
     seatPosition (int)
+    date         (date)
     createdAt    (time)
     updatedAt    (time)
 

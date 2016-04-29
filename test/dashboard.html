@@ -11,12 +11,27 @@
     <p>Hello, {{ .firstname }}</p>
     <a href='/dashboard'>Dashboard</a>
     <a href='/profile'>Profile</a>
-    <a href='/longtable'>LongTable</a>
+    <a href='/longtables'>Longtables</a>
     <a href='/api/logout'>Log Out</a>
     <hr />
 
     <div>
         <h3>LongTable Bookings</h3>
+        {{ with .LongTableBookings }}
+            <ul>
+            {{ range . }}
+                <li>
+                    <a href='/longtable/{{ .longTableID }}'>LongTable #{{ .longTableID }} at Seat {{ .seatPosition }} at date {{ .date }}</a>
+                    <form action='/api/longtable/booking/delete' method='POST'>
+                        <input type='hidden' name='longTableBookingID' value='{{ .id }}' />
+                        <button type='submit'>Cancel</button>
+                    </form>
+                </li>
+            {{ end }}
+            </ul>
+        {{ else }}
+            <p>No longtable bookings..</p>
+        {{ end }}
     </div>
 
     <div>
@@ -24,11 +39,24 @@
         {{ with .SimilarUsers }}
             <ul>
             {{ range $k, $user := . }}
-                <li>{{ $user.firstname }} {{ $user.lastname }}</li>
+                <li><a href='/profile/{{ $user.id }}'>{{ $user.firstname }} {{ $user.lastname }}</a></li>
             {{ end }}
             </ul>
         {{ else }}
             <p>No similar users..</p>
+        {{ end }}
+    </div>
+
+    <div>
+        <h3>User Connections</h3>
+        {{ with .connections }}
+            <ul>
+            {{ range $k, $user := . }}
+                <li><a href='/profile/{{ $user.id }}'>{{ $user.firstname }} {{ $user.lastname }}</a></li>
+            {{ end }}
+            </ul>
+        {{ else }}
+            <p>No user connections..</p>
         {{ end }}
     </div>
 </body>

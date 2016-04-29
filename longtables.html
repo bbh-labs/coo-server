@@ -1,0 +1,66 @@
+{{ define "longtables" }}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>COO | LongTable</title>
+    <meta charset='utf-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+</head>
+<body>
+    {{ $longtables := longtables 0 }}
+
+    <p>Hello, {{ .firstname }}</p>
+    <a href='/dashboard'>Dashboard</a>
+    <a href='/profile'>Profile</a>
+    <a href='/longtables'>Longtables</a>
+    <a href='/api/logout'>Log Out</a>
+    <hr />
+
+    <div>
+        <h3>List of longtables</h3>
+        {{ with $longtables }}
+            <ul>
+            {{ range $k, $longtable := . }} 
+                <div>
+                    <a href='/longtable/{{ $longtable.id }}'>{{ $longtable.name }}</a>
+                </div>
+            {{ end }}
+        </ul>
+        {{ else }}
+        <p>No longtables..</p>
+        {{ end }}
+    </div>
+
+    {{ if eq .privilege "admin" }}
+    <form action='/api/longtable' method='POST'>
+        <div>
+            <label>Name
+                <input type='text' name='name' />
+            </label>
+        </div>
+        <div>
+            <label>Num. Seats
+                <input type='range' name='numSeats' />
+                <output for='numSeats' onforminput='value = numSeats.valueAsNumber;'></output>
+            </label>
+        </div>
+        <div>
+            <label>Opening Time
+                <input type='time' name='openingTime' />
+            </label>
+        </div>
+        <div>
+            <label>Closing Time
+                <input type='time' name='closingTime' />
+            </label>
+        </div>
+        <div>
+            <button type='submit'>Create a LongTable</button>
+        </div>
+    </form>
+    {{ end }}
+</body>
+</html>
+
+{{ end }}

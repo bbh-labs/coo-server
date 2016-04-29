@@ -8,92 +8,121 @@
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
 </head>
 <body>
-    <p>Hello, {{ .firstname }} {{ with .imageURL }} <img src='{{ . }}' /> {{ end }}</p>
-    <a href='/dashboard'>Dashboard</a>
-    <a href='/profile'>Profile</a>
-    <a href='/longtable'>LongTable</a>
-    <a href='/api/logout'>Log Out</a>
-    <hr />
+    {{ if .id }}
+        <p>Hello, {{ .firstname }}</p>
+        <a href='/dashboard'>Dashboard</a>
+        <a href='/profile'>Profile</a>
+        <a href='/longtables'>Longtables</a>
+        <a href='/api/logout'>Log Out</a>
+        <hr />
 
-    <form action='/api/user' method='POST' enctype='multipart/form-data'>
-        <div>
-            <label>Firstname
-                <input type='text' name='firstname' value='{{ .firstname }}' />
-            </label>
-        </div>
-        <div>
-            <label>Lastname
-                <input type='text' name='lastname' value='{{ .lastname }}' />
-            </label>
-        </div>
-        <div>
-            <label>Email
-                <input type='email' name='email' value='{{ .email }}' />
-            </label>
-        </div>
-        <div>
-            <label>Old Password
-                <input type='password' name='old-password' />
-            </label>
-        </div>
-        <div>
-            <label>New Password
-                <input type='password' name='new-password' />
-            </label>
-        </div>
-        <div>
-            <label>Birthdate
-                <input type='date' name='birthdate' {{ with .birthdate }} value='{{ . }}' {{ end }} />
-            </label>
-        </div>
-        <div>
-            <label>Image
-                <input type='file' name='image' />
-            </label>
-        </div>
-        <div>
-            <label>Interests
-                <input type='checkbox' name='interests' value='photography' {{ if .InterestedIn "photography" }} checked {{ end }}>Photography</option>
-                <input type='checkbox' name='interests' value='travelling' {{ if .InterestedIn "travelling" }} checked {{ end }}>Travelling</option>
-                <input type='checkbox' name='interests' value='music' {{ if .InterestedIn "music" }} checked {{ end }}>Music</option>
-                <input type='checkbox' name='interests' value='drawing' {{ if .InterestedIn "drawing" }} checked {{ end }}>Drawing</option>
-                <input type='checkbox' name='interests' value='foods' {{ if .InterestedIn "foods" }} checked {{ end }}>Foods</option>
-                <input type='checkbox' name='interests' value='sports' {{ if .InterestedIn "sports" }} checked {{ end }}>Sports</option>
-                <input type='checkbox' name='interests' value='computers' {{ if .InterestedIn "computers" }} checked {{ end }}>Computers</option>
-                <input type='checkbox' name='interests' value='video-games' {{ if .InterestedIn "video-games" }} checked {{ end }}>Video Games</option>
-                <input type='checkbox' name='interests' value='reading' {{ if .InterestedIn "reading" }} checked {{ end }}>Reading</option>
-                <input type='checkbox' name='interests' value='electronics' {{ if .InterestedIn "electronics" }} checked {{ end }}>Electronics</option>
-            </label>
-        </div>
-        <div>
-            <label>WeChat Number
-                <input type='tel' name='wechatNumber' {{ with .wechatNumber }} value='{{ . }}' {{ end }} />
-            </label>
-        </div>
-        <div>
-            <label>LINE Number
-                <input type='tel' name='lineNumber' {{ with .lineNumber }} value='{{ . }}' {{ end }} />
-            </label>
-        </div>
-        <div>
-            <label>Facebook Number
-                <input type='tel' name='facebookNumber' {{ with .facebookNumber }} value='{{ . }}' {{ end }} />
-            </label>
-        </div>
-        <div>
-            <label>Skype Number
-                <input type='tel' name='skypeNumber' {{ with .skypeNumber }} value='{{ . }}' {{ end }} />
-            </label>
-        </div>
-        <div>
-            <label>WhatsApp Number
-                <input type='tel' name='whatsappNumber' {{ with .whatsappNumber }} value='{{ . }}' {{ end }} />
-            </label>
-        </div>
-        <div>
-            <button type='submit'>Update</button>
-        </div>
-    </form>
+        <p>Hello, {{ .firstname }} {{ with .imageURL }} <img src='{{ . }}' /> {{ end }}</p>
+        <a href='/dashboard'>Dashboard</a>
+        <a href='/profile'>Profile</a>
+        <a href='/longtables'>Longtables</a>
+        <a href='/api/logout'>Log Out</a>
+        <hr />
+
+        <form action='/api/user' method='POST' enctype='multipart/form-data'>
+            <div>
+                <label>Firstname
+                    <input type='text' name='firstname' value='{{ .firstname }}' />
+                </label>
+            </div>
+            <div>
+                <label>Lastname
+                    <input type='text' name='lastname' value='{{ .lastname }}' />
+                </label>
+            </div>
+            <div>
+                <label>Email
+                    <input type='email' name='email' value='{{ .email }}' />
+                </label>
+            </div>
+            <div>
+                <label>Old Password
+                    <input type='password' name='old-password' />
+                </label>
+            </div>
+            <div>
+                <label>New Password
+                    <input type='password' name='new-password' />
+                </label>
+            </div>
+            <div>
+                <label>Birthdate
+                    <input type='date' name='birthdate' {{ with .birthdate }} value='{{ . }}' {{ end }} />
+                </label>
+            </div>
+            <div>
+                <label>Image
+                    <input type='file' name='image' />
+                </label>
+            </div>
+            <div>
+                <label>Interests
+                    <input type='checkbox' name='interests' value='photography' {{ if .InterestedIn "photography" }} checked {{ end }}>Photography</option>
+                    <input type='checkbox' name='interests' value='travelling' {{ if .InterestedIn "travelling" }} checked {{ end }}>Travelling</option>
+                    <input type='checkbox' name='interests' value='music' {{ if .InterestedIn "music" }} checked {{ end }}>Music</option>
+                    <input type='checkbox' name='interests' value='drawing' {{ if .InterestedIn "drawing" }} checked {{ end }}>Drawing</option>
+                    <input type='checkbox' name='interests' value='foods' {{ if .InterestedIn "foods" }} checked {{ end }}>Foods</option>
+                    <input type='checkbox' name='interests' value='sports' {{ if .InterestedIn "sports" }} checked {{ end }}>Sports</option>
+                    <input type='checkbox' name='interests' value='computers' {{ if .InterestedIn "computers" }} checked {{ end }}>Computers</option>
+                    <input type='checkbox' name='interests' value='video-games' {{ if .InterestedIn "video-games" }} checked {{ end }}>Video Games</option>
+                    <input type='checkbox' name='interests' value='reading' {{ if .InterestedIn "reading" }} checked {{ end }}>Reading</option>
+                    <input type='checkbox' name='interests' value='electronics' {{ if .InterestedIn "electronics" }} checked {{ end }}>Electronics</option>
+                </label>
+            </div>
+            <div>
+                <label>WeChat Number
+                    <input type='tel' name='wechatNumber' {{ with .wechatNumber }} value='{{ . }}' {{ end }} />
+                </label>
+            </div>
+            <div>
+                <label>LINE Number
+                    <input type='tel' name='lineNumber' {{ with .lineNumber }} value='{{ . }}' {{ end }} />
+                </label>
+            </div>
+            <div>
+                <label>Facebook Number
+                    <input type='tel' name='facebookNumber' {{ with .facebookNumber }} value='{{ . }}' {{ end }} />
+                </label>
+            </div>
+            <div>
+                <label>Skype Number
+                    <input type='tel' name='skypeNumber' {{ with .skypeNumber }} value='{{ . }}' {{ end }} />
+                </label>
+            </div>
+            <div>
+                <label>WhatsApp Number
+                    <input type='tel' name='whatsappNumber' {{ with .whatsappNumber }} value='{{ . }}' {{ end }} />
+                </label>
+            </div>
+            <div>
+                <button type='submit'>Update</button>
+            </div>
+        </form>
+    {{ else }}
+        <p>Hello, {{ .user.firstname }}</p>
+        <a href='/dashboard'>Dashboard</a>
+        <a href='/profile'>Profile</a>
+        <a href='/longtables'>Longtables</a>
+        <a href='/api/logout'>Log Out</a>
+        <hr />
+
+        <p>{{ .otherUser.firstname }} {{ .otherUser.lastname }}</p>
+        {{ if (.user.IsConnectedTo .otherUser) }}
+            <form action='/api/user/connect/delete' method='POST'>
+                <input type='hidden' name='otherUserID' value='{{ .otherUser.id }}' />
+                <button>Disconnect</button>
+            </form>
+        {{ else }}
+            <form action='/api/user/connect' method='POST'>
+                <input type='hidden' name='otherUserID' value='{{ .otherUser.id }}' />
+                <button>Connect</button>
+            </form>
+        {{ end }}
+    {{ end }}
 </body>
 </html>
 
