@@ -42,6 +42,11 @@
             </label>
         </div>
         <div>
+            <label>Birthdate
+                <input type='date' name='birthdate' {{ with .birthdate }} value='{{ . }}' {{ end }} />
+            </label>
+        </div>
+        <div>
             <label>Image
                 <input type='file' name='image' />
             </label>
@@ -58,6 +63,31 @@
                 <input type='checkbox' name='interests' value='video-games' {{ if .InterestedIn "video-games" }} checked {{ end }}>Video Games</option>
                 <input type='checkbox' name='interests' value='reading' {{ if .InterestedIn "reading" }} checked {{ end }}>Reading</option>
                 <input type='checkbox' name='interests' value='electronics' {{ if .InterestedIn "electronics" }} checked {{ end }}>Electronics</option>
+            </label>
+        </div>
+        <div>
+            <label>WeChat Number
+                <input type='tel' name='wechatNumber' {{ with .wechatNumber }} value='{{ . }}' {{ end }} />
+            </label>
+        </div>
+        <div>
+            <label>LINE Number
+                <input type='tel' name='lineNumber' {{ with .lineNumber }} value='{{ . }}' {{ end }} />
+            </label>
+        </div>
+        <div>
+            <label>Facebook Number
+                <input type='tel' name='facebookNumber' {{ with .facebookNumber }} value='{{ . }}' {{ end }} />
+            </label>
+        </div>
+        <div>
+            <label>Skype Number
+                <input type='tel' name='skypeNumber' {{ with .skypeNumber }} value='{{ . }}' {{ end }} />
+            </label>
+        </div>
+        <div>
+            <label>WhatsApp Number
+                <input type='tel' name='whatsappNumber' {{ with .whatsappNumber }} value='{{ . }}' {{ end }} />
             </label>
         </div>
         <div>

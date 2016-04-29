@@ -138,11 +138,12 @@ func deleteUser(user User) error {
         return ErrMissingKey
     }
 
-    if _, err := db.Do("DECR", "nextUserID"); err != nil {
+    userID := user["id"]
+
+    // Remove User email reference
+    if err := user.deleteEmailReference(); err != nil {
         return err
     }
-
-    userID := user["id"]
 
     // Delete User
     if _, err := db.Do("DEL", fmt.Sprint("user:", userID)); err != nil {
@@ -151,11 +152,6 @@ func deleteUser(user User) error {
 
     // Remove User from users list
     if _, err := db.Do("ZREM", "users", userID); err != nil {
-        return err
-    }
-
-    // Remove User email reference
-    if err := user.deleteEmailReference(); err != nil {
         return err
     }
 
@@ -218,7 +214,7 @@ func updateUser(user User) (err error) {
         return err
     }
 
-    // Delete email reference
+    // Set email reference
     if email, ok := user["email"]; ok {
         if err := user.setEmailReference(email.(string)); err != nil {
             return err
@@ -312,6 +308,23 @@ func _getUserIDs(command string, args ...interface{}) ([]int, error) {
     } else {
         return userIDs, nil
     }
+}
+
+func (user User) set(key, value string) error {
+    if value != "" {
+        switch key {
+        case "birthdate":
+            if _, err := parseDate(value); err != nil {
+                return ErrWrongDateFormat
+            } else {
+                user["birthdate"] = value
+            }
+        default:
+            user[key] = value
+        }
+    }
+
+    return nil
 }
 
 // Add otherUser as current User's connection
@@ -440,14 +453,16 @@ func (user User) setEmailReference(email string) error {
     if email == "" {
         email = user["email"].(string)
     }
-    if _, err := db.Do("SET", fmt.Sprint("user:email:", user["email"]), user["id"]); err != nil {
+    if _, err := db.Do("SET", fmt.Sprint("user:email:", email), user["id"]); err != nil {
         return err
     }
     return nil
 }
 
 func (user User) deleteEmailReference() error {
-    if _, err := db.Do("DEL", fmt.Sprint("user:email:", user["email"])); err != nil {
+    if email, err := user.emailAddress(); err != nil {
+        return err
+    } else if _, err := db.Do("DEL", fmt.Sprint("user:email:", email)); err != nil {
         return err
     }
     return nil

@@ -40,7 +40,7 @@ func TestUser(t *testing.T) {
     }
 
     // Get user
-    if _, err := getUser(user); err != nil {
+    if _, err = getUser(user); err != nil {
         t.Error("getUser:", err)
     }
 

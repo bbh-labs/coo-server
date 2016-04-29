@@ -5,12 +5,9 @@ import (
     "errors"
     "flag"
     "html/template"
-    "io"
     "log"
-    "mime/multipart"
     "net/http"
     "os"
-    "os/exec"
     "os/signal"
     "strconv"
     "strings"
@@ -43,13 +40,22 @@ var test = flag.Bool("test", false, "serve front-end test sample")
 var (
     ErrEmailTooShort       = errors.New("Email too short")
     ErrPasswordTooShort    = errors.New("Password too short")
+    ErrFirstnameTooShort   = errors.New("Firstname too short")
+    ErrLastnameTooShort    = errors.New("Lastname too short")
+
     ErrNotLoggedIn         = errors.New("User is not logged in")
     ErrPasswordMismatch    = errors.New("Password mismatch")
+    ErrWrongDateFormat     = errors.New("Wrong date format")
     ErrTypeAssertionFailed = errors.New("Type assertion failed")
     ErrEntityNotFound      = errors.New("Entity not found")
     ErrEmptyParameter      = errors.New("Empty parameter")
     ErrMissingKey          = errors.New("Missing key")
     ErrIDMismach           = errors.New("ID mismatch")
+)
+
+// Constants
+const (
+    DateFormat = "02-01-2006"
 )
 
 func main() {
@@ -329,7 +335,22 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         firstname := r.FormValue("firstname")
+        if len(firstname) < 2 {
+            http.Error(w, ErrFirstnameTooShort.Error(), http.StatusBadRequest)
+            return
+        }
+
         lastname := r.FormValue("lastname")
+        if len(lastname) < 2 {
+            http.Error(w, ErrLastnameTooShort.Error(), http.StatusBadRequest)
+            return
+        }
+
+        birthdate := r.FormValue("birthdate")
+        if _, err := parseDate(birthdate); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
 
         imageURL := ""
 
@@ -415,37 +436,47 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        // Set User firstname and lastname
-        user["firstname"] = r.FormValue("firstname")
-        user["lastname"] = r.FormValue("lastname")
-        user["email"] = r.FormValue("email")
+        // Set User info
+        s := Setter{}
+        s.setDate(user, "birthdate", r.FormValue("birthdate"))
+        s.set(user, "firstname", r.FormValue("firstname"))
+        s.set(user, "lastname", r.FormValue("lastname"))
+        s.set(user, "email", r.FormValue("email"))
+        s.set(user, "travellingAs", r.FormValue("travellingAs"))
+        s.set(user, "wechatNumber", r.FormValue("wechatNumber"))
+        s.set(user, "lineNumber", r.FormValue("lineNumber"))
+        s.set(user, "facebookNumber", r.FormValue("facebookNumber"))
+        s.set(user, "skypeNumber", r.FormValue("skypeNumber"))
+        s.set(user, "whatsappNumber", r.FormValue("whatsappNumber"))
+        if s.err != nil {
+            http.Error(w, s.err.Error(), http.StatusBadRequest)
+            return
+        }
 
         // Check if User is updating password
         oldPassword := r.FormValue("old-password")
         newPassword := r.FormValue("new-password")
-        if user["password"] != "" {
-            // Process valid input (both passwords are at least the minimum length)
-            if len(oldPassword) >= 8 && len(newPassword) >= 8 {
-                // Check if old password matches
-                if err := bcrypt.CompareHashAndPassword([]byte(user["password"].(string)), []byte(oldPassword)); err != nil {
-                    w.WriteHeader(http.StatusBadRequest)
-                    return
-                }
-
-                // Create hashed password from new password
-                hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-                if err != nil {
-                    log.Println(err)
-                    w.WriteHeader(http.StatusInternalServerError)
-                    return
-                }
-                user["password"] = string(hashedPassword)
-
-            // Invalid input (at least one of the password is less than minimum length
-            } else if len(oldPassword) > 0 && len(newPassword) > 0 {
+        // Process valid input (both passwords are at least the minimum length)
+        if len(oldPassword) >= 8 && len(newPassword) >= 8 {
+            // Check if old password matches
+            if err := bcrypt.CompareHashAndPassword([]byte(user["password"].(string)), []byte(oldPassword)); err != nil {
                 w.WriteHeader(http.StatusBadRequest)
                 return
             }
+
+            // Create hashed password from new password
+            hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+            user["password"] = string(hashedPassword)
+
+        // Invalid input (at least one of the password is less than minimum length
+        } else if len(oldPassword) > 0 && len(newPassword) > 0 {
+            w.WriteHeader(http.StatusBadRequest)
+            return
         }
 
         if strings.HasPrefix(r.Header["Content-Type"][0], "multipart/form-data") {
@@ -866,82 +897,4 @@ func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
-}
-
-// Copy file from request to local destination
-func copyFile(r *http.Request, name string, folder, filename string) (destination string, err error) {
-    var fileheader *multipart.FileHeader
-
-    if _, fileheader, err = r.FormFile("image"); err != nil {
-        if err == http.ErrMissingFile {
-            err = nil
-        }
-        return
-    } else {
-        var infile multipart.File
-        var outfile *os.File
-
-        if err = os.MkdirAll(folder, os.ModeDir|0775); err != nil {
-            return
-        }
-
-        destination = folder + "/" + filename
-
-        // Open received file
-        if infile, err = fileheader.Open(); err != nil {
-            return
-        }
-        defer infile.Close()
-
-        // Create destination file
-        if outfile, err = os.OpenFile(destination, os.O_CREATE|os.O_WRONLY, 0664); err != nil {
-            return
-        }
-        defer outfile.Close()
-
-        // Copy file to destination
-        if _, err = io.Copy(outfile, infile); err != nil {
-            return
-        }
-    }
-
-    return
-}
-
-// Generates randomized filename
-func randomFilename() string {
-    cmd := exec.Command("openssl", "rand", "-base64", "64")
-
-    output, err := cmd.Output()
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    for i := range output {
-        if output[i] == '/' || output[i] == '\n'{
-            output[i] = '-'
-        }
-    }
-
-    return string(output)
-}
-
-// Check if map has all the specified keys
-func hasKeys(m map[string]interface{}, args ...string) bool {
-    for _, key := range args {
-        if _, ok := m[key]; !ok {
-            return false
-        }
-    }
-    return true
-}
-
-// Check if map has one of the specified keys
-func hasKey(m map[string]interface{}, args ...string) (bool, string) {
-    for _, key := range args {
-        if _, ok := m[key]; ok {
-            return true, key
-        }
-    }
-    return false, ""
 }
