@@ -65,6 +65,9 @@ func (longTable LongTable) fetch() (LongTable, error) {
                 }
             }
         }
+
+        // Get available seats
+        longTable["availableSeats"] = longTable.fetchAvailableSeats()
     }
 
     return longTable, nil
@@ -175,17 +178,20 @@ func _getLongTables(command string, args ...interface{}) ([]LongTable, error) {
     return longTables, nil
 }
 
-func (longTable LongTable) Seats() []int {
+func (longTable LongTable) fetchSeats() []int {
     seats := make([]int, longTable["numSeats"].(int))
+
     for i := 0; i < len(seats); i++ {
         seats[i] = i
     }
+
     return seats
 }
 
-func (longTable LongTable) AvailableSeats() []int {
-    seats := longTable.Seats()
+func (longTable LongTable) fetchAvailableSeats() []int {
+    seats := longTable.fetchSeats()
     takenSeats := []int{}
+
     if bookings, err := getLongTableBookings(map[string]interface{}{"longTableID": longTable["id"]}); err != nil {
         return nil
     } else {

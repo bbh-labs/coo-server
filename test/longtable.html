@@ -20,7 +20,7 @@
     <div>
         <h4>Available Seats</h4>
         {{ with .longtable }}
-            {{ range .AvailableSeats }}
+            {{ range .availableSeats }}
                 <button disabled>{{ . }}</button>
             {{ end }}
 
