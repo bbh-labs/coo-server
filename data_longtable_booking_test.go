@@ -22,25 +22,25 @@ func TestLongTableBooking(t *testing.T) {
     }
 
     var longTableBookingID int
-    if longTableBookingID, err = insertLongTableBooking(longTableBooking); err != nil {
-        t.Error("insertLongTableBooking:", err)
+    if longTableBookingID, err = longTableBooking.insert(); err != nil {
+        t.Error("LongTableBooking.insert:", err)
     }
     longTableBooking["id"] = longTableBookingID
 
     // Update longTableBooking
     longTableBooking["seatPosition"] = 25
-    if err := updateLongTableBooking(longTableBooking); err != nil {
-        t.Error("updateLongTableBooking:", err)
+    if err := longTableBooking.update(); err != nil {
+        t.Error("LongTableBooking.update:", err)
     }
 
-    // Get longTableBooking
-    if _, err := getLongTableBooking(longTableBooking); err != nil {
-        t.Error("getLongTableBooking:", err)
+    // Fetch longTableBooking
+    if _, err := longTableBooking.fetch(); err != nil {
+        t.Error("LongTableBooking.fetch:", err)
     }
 
     // Has longTableBooking
-    if ok, _ := hasLongTableBooking(longTableBooking); !ok {
-        t.Error("hasLongTableBooking")
+    if ok, _ := longTableBooking._exists(); !ok {
+        t.Error("LongTableBooking._exists")
     }
 
     // Get longTableBookings by longTableID
@@ -54,7 +54,7 @@ func TestLongTableBooking(t *testing.T) {
     }
 
     // Delete longTableBooking
-    if err = deleteLongTableBooking(longTableBooking); err != nil {
-        t.Error("deleteLongTableBooking:", err)
+    if err = longTableBooking.delete(); err != nil {
+        t.Error("LongTableBooking.delete:", err)
     }
 }

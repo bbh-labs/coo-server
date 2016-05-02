@@ -15,10 +15,13 @@ func loggedIn(w http.ResponseWriter, r *http.Request, fetchUser bool) (bool, Use
 	val := session.Values["userID"]
 	if userID, ok := val.(int); !ok {
 		return false, nil
-	} else if exists, user := userExists(User{"id": userID}, fetchUser); !exists {
-		return false, nil
 	} else {
-		return true, user
+        user := User{"id": userID}
+        if exists, user := user.exists(fetchUser); !exists {
+            return false, nil
+        } else {
+            return true, user
+        }
 	}
 }
 

@@ -11,10 +11,10 @@ import (
 type User map[string]interface{}
 
 // Check if User exists, with an option to fetch the user
-func userExists(user User, fetch bool) (bool, User) {
+func (user User) exists(fetch bool) (bool, User) {
     // Check if the User exists and retrieve it
 	if fetch {
-        if user, err := getUser(user); err != nil {
+        if user, err := user.fetch(); err != nil {
             return false, nil
         } else {
             return true, user
@@ -22,7 +22,7 @@ func userExists(user User, fetch bool) (bool, User) {
 
     // Just check if the User exists
 	} else {
-        if ok, err := hasUser(user); err != nil {
+        if ok, err := user._exists(); err != nil {
             return false, nil
         } else {
             return ok, nil
@@ -31,7 +31,7 @@ func userExists(user User, fetch bool) (bool, User) {
 }
 
 // Check if User exists
-func hasUser(user User) (bool, error) {
+func (user User) _exists() (bool, error) {
     if reply, err := db.Do("EXISTS", fmt.Sprint("user:", user["id"])); err != nil {
         return false, err
     } else if count, err := redis.Int(reply, err); err != nil {
@@ -41,8 +41,8 @@ func hasUser(user User) (bool, error) {
     }
 }
 
-// Get User with specified parameters
-func getUser(user User) (User, error) {
+// Fetch User with specified parameters
+func (user User) fetch() (User, error) {
     var err error
 
     ok, key := hasKey(user, "id", "email")
@@ -52,7 +52,7 @@ func getUser(user User) (User, error) {
 
     switch key {
     case "id":
-        user, err = _getUser("HGETALL", fmt.Sprint("user:", user["id"]))
+        user, err = _fetchUser("HGETALL", fmt.Sprint("user:", user["id"]))
     case "email":
         var reply interface{}
         var userID int
@@ -62,7 +62,7 @@ func getUser(user User) (User, error) {
         } else if userID, err = redis.Int(reply, err); err != nil {
             return nil, err
         } else {
-            user, err = _getUser("HGETALL", fmt.Sprint("user:", userID))
+            user, err = _fetchUser("HGETALL", fmt.Sprint("user:", userID))
         }
     }
     if err != nil {
@@ -84,8 +84,8 @@ func getUser(user User) (User, error) {
     return user, nil
 }
 
-// Get User with specified parameters without connections
-func getUserWithoutConnections(user User) (User, error) {
+// Fetch User with specified parameters without connections
+func fetchUserWithoutConnections(user User) (User, error) {
     var err error
 
     ok, key := hasKey(user, "id", "email")
@@ -95,7 +95,7 @@ func getUserWithoutConnections(user User) (User, error) {
 
     switch key {
     case "id":
-        user, err = _getUser("HGETALL", fmt.Sprint("user:", user["id"]))
+        user, err = _fetchUser("HGETALL", fmt.Sprint("user:", user["id"]))
     case "email":
         var reply interface{}
         var userID int
@@ -105,7 +105,7 @@ func getUserWithoutConnections(user User) (User, error) {
         } else if userID, err = redis.Int(reply, err); err != nil {
             return nil, err
         } else {
-            user, err = _getUser("HGETALL", fmt.Sprint("user:", userID))
+            user, err = _fetchUser("HGETALL", fmt.Sprint("user:", userID))
         }
     }
     if err != nil {
@@ -122,7 +122,7 @@ func getUserWithoutConnections(user User) (User, error) {
 }
 
 // Insert User with specified parameters
-func insertUser(user User) (int, error) {
+func (user User) insert() (int, error) {
     if ok, _ := hasKey(user, "email"); !ok {
         return 0, ErrMissingKey
     }
@@ -176,7 +176,7 @@ func insertUser(user User) (int, error) {
 }
 
 // Delete User with specified parameters
-func deleteUser(user User) error {
+func (user User) delete() error {
     if ok, _ := hasKey(user, "email"); !ok {
         return ErrMissingKey
     }
@@ -223,7 +223,7 @@ func deleteUser(user User) error {
 }
 
 // Update User with specified parameters
-func updateUser(user User) (err error) {
+func (user User) update() (err error) {
     var args []interface{}
 
     if userID, ok := user["id"]; !ok {
@@ -277,14 +277,14 @@ func updateUser(user User) (err error) {
 }
 
 // Get Users matching specified parameters
-func getUsers(params map[string]interface{}) ([]User, error) {
+func fetchUsers(params map[string]interface{}) ([]User, error) {
     count := params["count"].(int)
 
     if interests, ok := params["interests"].([]string); ok {
         var allUsers []User
 
         for _, interest := range interests {
-            if users, err := _getUsers("ZRANGE", fmt.Sprint("interest:", interest), 0, count - 1); err != nil {
+            if users, err := _fetchUsers("ZRANGE", fmt.Sprint("interest:", interest), 0, count - 1); err != nil {
                 return nil, err
             } else {
                 for _, user := range users {
@@ -298,11 +298,11 @@ func getUsers(params map[string]interface{}) ([]User, error) {
         return allUsers, nil
     }
 
-    return _getUsers("ZRANGE", "users", 0, count - 1)
+    return _fetchUsers("ZRANGE", "users", 0, count - 1)
 }
 
 // Get User with specified raw Redis command
-func _getUser(command string, args ...interface{}) (User, error) {
+func _fetchUser(command string, args ...interface{}) (User, error) {
     user := User{}
 
     if reply, err := db.Do(command, args...); err != nil {
@@ -328,15 +328,15 @@ func _getUser(command string, args ...interface{}) (User, error) {
 }
 
 // Get Users with specified raw Redis command
-func _getUsers(command string, args ...interface{}) ([]User, error) {
+func _fetchUsers(command string, args ...interface{}) ([]User, error) {
     var users []User
 
-    if userIDs, err := _getUserIDs(command, args...); err != nil {
+    if userIDs, err := _fetchUserIDs(command, args...); err != nil {
         return nil, err
     } else {
         for _, userID := range userIDs {
             user := User{"id": userID}
-            if user, err = getUser(user); err != nil {
+            if user, err = user.fetch(); err != nil {
                 return nil, err
             } else {
                 users = append(users, user)
@@ -348,7 +348,7 @@ func _getUsers(command string, args ...interface{}) ([]User, error) {
 }
 
 // Get User IDs with specified raw Redis command
-func _getUserIDs(command string, args ...interface{}) ([]int, error) {
+func _fetchUserIDs(command string, args ...interface{}) ([]int, error) {
     if reply, err := db.Do(command, args...); err != nil {
         return nil, err
     } else if userIDs, err := redis.Ints(reply, err); err != nil {
@@ -508,13 +508,13 @@ func (user User) longTableBookings() ([]LongTableBooking, error) {
 func (user User) Connections() ([]User, error) {
     var users []User
 
-    if userIDs, err := _getUserIDs("ZRANGE", fmt.Sprint("userConnections:", user["id"]), 0, 100); err != nil {
+    if userIDs, err := _fetchUserIDs("ZRANGE", fmt.Sprint("userConnections:", user["id"]), 0, 100); err != nil {
         return nil, err
     } else {
         for _, userID := range userIDs {
             user := User{"id": userID}
 
-            if user, err = getUserWithoutConnections(user); err != nil {
+            if user, err = fetchUserWithoutConnections(user); err != nil {
                 return nil, err
             } else {
                 users = append(users, user)
@@ -548,7 +548,7 @@ func (user User) SimilarUsers() ([]User, error) {
     } else {
         var allUsers []User
 
-        if users, err := getUsers(map[string]interface{}{
+        if users, err := fetchUsers(map[string]interface{}{
             "count": 0,
             "interests": interests,
         }); err != nil {

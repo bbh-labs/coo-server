@@ -10,10 +10,10 @@ import (
 
 type LongTableBooking map[string]interface{}
 
-func longTableBookingExists(longTableBooking LongTableBooking, fetch bool) (bool, LongTableBooking) {
+func (longTableBooking LongTableBooking) exists(fetch bool) (bool, LongTableBooking) {
     // Check if the longTableBooking exists and retrieve it
 	if fetch {
-        if longTableBooking, err := getLongTableBooking(longTableBooking); err != nil {
+        if longTableBooking, err := longTableBooking.fetch(); err != nil {
             return false, nil
         } else {
             return true, longTableBooking
@@ -21,7 +21,7 @@ func longTableBookingExists(longTableBooking LongTableBooking, fetch bool) (bool
 
     // Just check if the longTableBooking exists
 	} else {
-        if ok, err := hasLongTableBooking(longTableBooking); err != nil {
+        if ok, err := longTableBooking._exists(); err != nil {
             return false, nil
         } else {
             return ok, nil
@@ -30,7 +30,7 @@ func longTableBookingExists(longTableBooking LongTableBooking, fetch bool) (bool
 }
 
 // Check if LongTableBooking exists
-func hasLongTableBooking(longTableBooking LongTableBooking) (bool, error) {
+func (longTableBooking LongTableBooking) _exists() (bool, error) {
     if reply, err := db.Do("EXISTS", fmt.Sprint("longTableBooking:", longTableBooking["id"])); err != nil {
         return false, err
     } else if count, err := redis.Int(reply, err); err != nil {
@@ -40,8 +40,8 @@ func hasLongTableBooking(longTableBooking LongTableBooking) (bool, error) {
     }
 }
 
-// Get LongTableBooking with specified parameters
-func getLongTableBooking(longTableBooking LongTableBooking) (LongTableBooking, error) {
+// Fetch LongTableBooking with specified parameters
+func (longTableBooking LongTableBooking) fetch() (LongTableBooking, error) {
     if longTableBookingID, ok := longTableBooking["id"]; !ok {
         return longTableBooking, ErrMissingKey
     } else {
@@ -72,7 +72,7 @@ func getLongTableBooking(longTableBooking LongTableBooking) (LongTableBooking, e
 }
 
 // Insert LongTableBooking with specified parameters
-func insertLongTableBooking(longTableBooking LongTableBooking) (int, error) {
+func (longTableBooking LongTableBooking) insert() (int, error) {
     if !hasKeys(longTableBooking, "longTableID", "userID") {
         return 0, ErrMissingKey
     }
@@ -113,13 +113,13 @@ func insertLongTableBooking(longTableBooking LongTableBooking) (int, error) {
 }
 
 // Delete LongTableBooking with specified parameters
-func deleteLongTableBooking(longTableBooking LongTableBooking) error {
+func (longTableBooking LongTableBooking) delete() error {
     var userID int
     var err error
 
     userID = longTableBooking["userID"].(int)
 
-    if longTableBooking, err = getLongTableBooking(longTableBooking); err != nil {
+    if longTableBooking, err = longTableBooking.fetch(); err != nil {
         return err
     } else if userID != longTableBooking["userID"].(int) {
         return ErrPermissionDenied
@@ -146,7 +146,7 @@ func deleteLongTableBooking(longTableBooking LongTableBooking) error {
 }
 
 // Update LongTableBooking with specified parameters
-func updateLongTableBooking(longTableBooking LongTableBooking) (err error) {
+func (longTableBooking LongTableBooking) update() (err error) {
     var args []interface{}
 
     if longTableBookingID, ok := longTableBooking["id"]; !ok {
@@ -209,7 +209,7 @@ func _getLongTableBookings(command string, args ...interface{}) ([]LongTableBook
     } else {
         for _, longTableBookingID := range longTableBookingIDs {
             longTableBooking := LongTableBooking{"id": longTableBookingID}
-            if _, err = getLongTableBooking(longTableBooking); err != nil {
+            if _, err = longTableBooking.fetch(); err != nil {
                 return nil, err
             }
             longTableBookings = append(longTableBookings, longTableBooking)

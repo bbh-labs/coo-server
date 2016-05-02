@@ -21,26 +21,26 @@ func TestLongTable(t *testing.T) {
     }
 
     var longTableID int
-    if longTableID, err = insertLongTable(longTable); err != nil {
-        t.Error("insertLongTable:", err)
+    if longTableID, err = longTable.insert(); err != nil {
+        t.Error("LongTable.insert:", err)
     }
     longTable["id"] = longTableID
 
     // Update longTable
     longTable["name"] = "Some longer longTable"
     longTable["numSeats"] = 50
-    if err := updateLongTable(longTable); err != nil {
-        t.Error("updateLongTable:", err)
+    if err := longTable.update(); err != nil {
+        t.Error("LongTable.update:", err)
     }
 
     // Get longTable
-    if _, err := getLongTable(longTable); err != nil {
-        t.Error("getLongTable:", err)
+    if _, err := longTable.fetch(); err != nil {
+        t.Error("LongTable.fetch:", err)
     }
 
     // Has longTable
-    if ok, _ := hasLongTable(longTable); !ok {
-        t.Error("hasLongTable")
+    if ok, _ := longTable._exists(); !ok {
+        t.Error("LongTable._exists")
     }
 
     // Get longTables
@@ -49,7 +49,7 @@ func TestLongTable(t *testing.T) {
     }
 
     // Delete longTable
-    if err = deleteLongTable(longTable); err != nil {
-        t.Error("deleteLongTable:", err)
+    if err = longTable.delete(); err != nil {
+        t.Error("LongTable.delete:", err)
     }
 }

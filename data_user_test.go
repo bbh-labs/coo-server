@@ -24,8 +24,8 @@ func TestUser(t *testing.T) {
     }
 
     var userID int
-    if userID, err = insertUser(user); err != nil {
-        t.Error("insertUser:", err)
+    if userID, err = user.insert(); err != nil {
+        t.Error("user.insert:", err)
     }
     user["id"] = userID
 
@@ -35,27 +35,27 @@ func TestUser(t *testing.T) {
     user["email"] = "john.cook@example.com"
     user["password"] = "1234abcd"
     user["imageURL"] = "content/john_cook.jpg"
-    if err := updateUser(user); err != nil {
+    if err := user.update(); err != nil {
         t.Error("updateUser:", err)
     }
 
     // Get user
-    if _, err = getUser(user); err != nil {
-        t.Error("getUser:", err)
+    if _, err = user.fetch(); err != nil {
+        t.Error("user.fetch:", err)
     }
 
     // Has user
-    if ok, _ := hasUser(user); !ok {
-        t.Error("hasUser")
+    if ok, _ := user._exists(); !ok {
+        t.Error("user._exists")
     }
 
     // Get users
-    if users, err := getUsers(map[string]interface{}{"count": 5}); err != nil || len(users) < 1 {
-        t.Error("getUsers:", err)
+    if users, err := fetchUsers(map[string]interface{}{"count": 5}); err != nil || len(users) < 1 {
+        t.Error("fetchUsers:", err)
     }
 
     // Delete user
-    if err = deleteUser(user); err != nil {
-        t.Error("deleteUser:", err)
+    if err = user.delete(); err != nil {
+        t.Error("user.delete:", err)
     }
 }
