@@ -114,31 +114,20 @@ func (longTableBooking LongTableBooking) insert() (int, error) {
 
 // Delete LongTableBooking with specified parameters
 func (longTableBooking LongTableBooking) delete() error {
-    var userID int
-    var err error
-
-    userID = longTableBooking["userID"].(int)
-
-    if longTableBooking, err = longTableBooking.fetch(); err != nil {
-        return err
-    } else if userID != longTableBooking["userID"].(int) {
-        return ErrPermissionDenied
-    }
-
     longTableBookingID := longTableBooking["id"]
 
     // Delete longTableBooking
-    if _, err = db.Do("DEL", fmt.Sprint("longTableBooking:", longTableBookingID)); err != nil {
+    if _, err := db.Do("DEL", fmt.Sprint("longTableBooking:", longTableBookingID)); err != nil {
         return err
     }
 
     // Remove longTableBooking from longTableBookings list
-    if _, err = db.Do("ZREM", fmt.Sprint("longTableBookings:", longTableBooking["longTableID"]), longTableBookingID); err != nil {
+    if _, err := db.Do("ZREM", fmt.Sprint("longTableBookings:", longTableBooking["longTableID"]), longTableBookingID); err != nil {
         return err
     }
 
     // Remove longTableBooking from userLongTableBookings list
-    if _, err = db.Do("ZREM", fmt.Sprint("userLongTableBookings:", longTableBooking["userID"]), longTableBookingID); err != nil {
+    if _, err := db.Do("ZREM", fmt.Sprint("userLongTableBookings:", longTableBooking["userID"]), longTableBookingID); err != nil {
         return err
     }
 

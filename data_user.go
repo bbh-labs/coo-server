@@ -177,10 +177,6 @@ func (user User) insert() (int, error) {
 
 // Delete User with specified parameters
 func (user User) delete() error {
-    if ok, _ := hasKey(user, "email"); !ok {
-        return ErrMissingKey
-    }
-
     userID := user["id"]
 
     // Remove User email reference
