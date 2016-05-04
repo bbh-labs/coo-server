@@ -35,7 +35,7 @@ var templates *template.Template
 // Command-line flags
 var address = flag.String("address", "http://localhost:8080", "server address")
 var port = flag.String("port", "8080", "server port")
-var test = flag.Bool("test", false, "serve front-end test sample")
+var serveTest = flag.Bool("serve-test", false, "serve front-end test sample")
 var dbhost = flag.String("dbhost", "", "database host")
 var dbport = flag.String("dbport", "6379", "database port")
 
@@ -125,7 +125,7 @@ func main() {
     router.PathPrefix("/auth").Handler(patHandler)
 
     // If running test server, set up template handlers
-    if *test {
+    if *serveTest {
         funcMap := template.FuncMap{
             "longtables": func(count int) []LongTable {
                 if longTables, err := getLongTables(map[string]interface{}{"count": count}); err != nil {
@@ -144,7 +144,7 @@ func main() {
 
     // Run web server
     var n *negroni.Negroni
-    if *test {
+    if *serveTest {
         n = negroni.New(negroni.NewRecovery(), negroni.NewLogger(), negroni.NewStatic(http.Dir("test/public")))
     } else {
         n = negroni.Classic()
@@ -313,7 +313,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         if ok, user := loggedIn(w, r, true); !ok {
             w.WriteHeader(http.StatusForbidden)
         } else {
-            if *test {
+            if *serveTest {
                 http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
             } else {
                 if data, err := json.Marshal(user); err != nil {
@@ -355,7 +355,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
                     log.Println(err)
                     w.WriteHeader(http.StatusInternalServerError)
                 } else {
-                    if *test {
+                    if *serveTest {
                         http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
                     } else {
                         w.WriteHeader(http.StatusOK)
@@ -473,7 +473,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        if *test {
+        if *serveTest {
             http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
         } else {
             w.WriteHeader(http.StatusOK)
@@ -490,7 +490,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusInternalServerError)
     }
 
-    if *test {
+    if *serveTest {
         http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
     } else {
         w.WriteHeader(http.StatusOK)
@@ -590,7 +590,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        if *test {
+        if *serveTest {
             http.Redirect(w, r, "/profile", http.StatusTemporaryRedirect)
         } else {
             w.WriteHeader(http.StatusOK)
@@ -646,7 +646,7 @@ func userConnectionHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        if *test {
+        if *serveTest {
             http.Redirect(w, r, fmt.Sprint("/profile/", otherUserID), http.StatusTemporaryRedirect)
         } else {
             w.WriteHeader(http.StatusOK)
@@ -786,7 +786,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         // Check privilege
-        if privilege, ok := user["admin"]; !ok || privilege != "admin" {
+        if privilege, ok := user["privilege"]; !ok || privilege != "admin" {
             http.Error(w, ErrPermissionDenied.Error(), http.StatusForbidden)
             return
         }
@@ -833,7 +833,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         } else {
-            if *test {
+            if *serveTest {
                 http.Redirect(w, r, fmt.Sprint("/longtable/", longTableID), http.StatusTemporaryRedirect)
             } else {
                 w.Write([]byte(strconv.Itoa(longTableID)))
@@ -1023,7 +1023,7 @@ func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         } else {
-            if *test {
+            if *serveTest {
                 http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
             } else {
                 w.Write([]byte(strconv.Itoa(longTableBookingID)))
@@ -1137,7 +1137,7 @@ func longTableBookingDeleteHandlerFunc(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    if *test {
+    if *serveTest {
         http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
     } else {
         w.WriteHeader(http.StatusOK)
@@ -1173,7 +1173,7 @@ func userConnectionDeleteHandlerFunc(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    if *test {
+    if *serveTest {
         http.Redirect(w, r, fmt.Sprint("/profile/", otherUserID), http.StatusTemporaryRedirect)
     } else {
         w.WriteHeader(http.StatusOK)
