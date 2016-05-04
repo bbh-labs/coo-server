@@ -2,6 +2,7 @@ package main
 
 import (
     "testing"
+    "time"
 
     "github.com/garyburd/redigo/redis"
 )
@@ -14,11 +15,14 @@ func TestLongTableBooking(t *testing.T) {
     }
     defer db.Close()
 
+    date := time.Now().Format(DateFormat)
+
     // Insert longTableBooking
     longTableBooking := LongTableBooking{
         "longTableID": 1000,
         "userID": 2000,
         "seatPosition": 20,
+        "date": date,
     }
 
     var longTableBookingID int

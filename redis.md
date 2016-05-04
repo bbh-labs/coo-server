@@ -74,3 +74,33 @@ ZADD longTableBookings:[longTableID]:[date] (time) [longTableBookingID]
 ZADD longTableBookings:[longTableID] (time) [longTableBookingID]
 ZADD userLongTableBookings:[userID] (time) [longTableBookingID]
 ZADD userLongTableBookings:[userID]:[date] (time) [longTableBookingID]
+
+# Posts (e.g. offers, events, reviews)
+HMSET post:[postID]
+    id          (int)
+    type        (string)
+    userID      (int)
+    title       (string)
+    description (string)
+    link        (string)
+    imageURL    (string)
+    createdAt   (time)
+    updatedAt   (time)
+
+ZADD
+
+# Post Meta
+ZADD post:[postID]:[key] [value]
+
+# Media (e.g. Menu pdf)
+HMSET media:[mediaID]
+    id        (int)
+    userID    (int)
+    imageURL  (string)
+    createdAt (time)
+    updatedAt (time)
+
+ZADD
+
+Add new reviews, update menu, upload new image to gallery, offers, events
+
