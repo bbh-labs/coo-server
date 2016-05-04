@@ -65,9 +65,6 @@ func (longTable LongTable) fetch() (LongTable, error) {
                 }
             }
         }
-
-        // Get available seats
-        longTable["availableSeats"] = longTable.fetchAvailableSeats()
     }
 
     return longTable, nil
@@ -188,12 +185,17 @@ func (longTable LongTable) fetchSeats() []int {
     return seats
 }
 
-func (longTable LongTable) fetchAvailableSeats() []int {
+func (longTable LongTable) fetchAvailableSeats(date string) ([]int, error) {
     seats := longTable.fetchSeats()
     takenSeats := []int{}
 
-    if bookings, err := getLongTableBookings(map[string]interface{}{"longTableID": longTable["id"]}); err != nil {
-        return nil
+    if bookings, err := getLongTableBookings(map[string]interface{}{
+        "longTableID": longTable["id"],
+        "date": date,
+    }); err != nil {
+        if err != redis.ErrNil {
+            return nil, err
+        }
     } else {
         for _, booking := range bookings {
             if seatPosition, ok := booking["seatPosition"]; ok {
@@ -216,6 +218,34 @@ func (longTable LongTable) fetchAvailableSeats() []int {
             }
         }
 
-        return availableSeats
+        return availableSeats, nil
     }
+
+    return nil, nil
+}
+
+// Check if seat is available
+func (longTable LongTable) isSeatAvailable(date string, seatPosition int) (bool, error) {
+    if bookings, err := getLongTableBookings(map[string]interface{}{
+        "longTableID": longTable["id"],
+        "date": date,
+    }); err != nil {
+        if err != redis.ErrNil {
+            return false, err
+        }
+    } else {
+        for _, booking := range bookings {
+            if pos, ok := booking["seatPosition"]; ok {
+                if pos == seatPosition {
+                    return false, nil
+                }
+            }
+        }
+    }
+
+    return true, nil
+}
+
+func (longTable LongTable) AvailableSeats(date string) ([]int, error) {
+    return longTable.fetchAvailableSeats(date)
 }

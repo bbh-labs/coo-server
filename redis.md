@@ -70,5 +70,7 @@ HMSET longTableBooking:[longTableBooking]
     updatedAt    (time)
 
 # LongTable Bookings
+ZADD longTableBookings:[longTableID]:[date] (time) [longTableBookingID]
 ZADD longTableBookings:[longTableID] (time) [longTableBookingID]
 ZADD userLongTableBookings:[userID] (time) [longTableBookingID]
+ZADD userLongTableBookings:[userID]:[date] (time) [longTableBookingID]

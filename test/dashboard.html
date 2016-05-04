@@ -24,6 +24,7 @@
                     <a href='/longtable/{{ .longTableID }}'>LongTable #{{ .longTableID }} at Seat {{ .seatPosition }} at date {{ .date }}</a>
                     <form action='/api/longtable/booking/delete' method='POST'>
                         <input type='hidden' name='longTableBookingID' value='{{ .id }}' />
+                        <input type='hidden' name='date' value='{{ .date }}' />
                         <button type='submit'>Cancel</button>
                     </form>
                 </li>

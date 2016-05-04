@@ -284,7 +284,7 @@ func fetchUsers(params map[string]interface{}) ([]User, error) {
                 return nil, err
             } else {
                 for _, user := range users {
-                    if !containsUser(allUsers, user) {
+                    if !user.in(allUsers) {
                         allUsers = append(allUsers, user)
                     }
                 }
@@ -355,7 +355,7 @@ func _fetchUserIDs(command string, args ...interface{}) ([]int, error) {
 }
 
 // Check if []Users contains User
-func containsUser(users []User, user User) bool {
+func (user User) in(users []User) bool {
     for _, u := range users {
         if u["id"] == user["id"] {
             return true
@@ -501,6 +501,27 @@ func (user User) longTableBookings() ([]LongTableBooking, error) {
     return getLongTableBookings(map[string]interface{}{"userID": user["id"]})
 }
 
+// Check if User has already booked the LongTable at particular date
+func (user User) bookedLongTable(longTable LongTable, date string) (bool, error) {
+    if reply, err := db.Do("ZRANGE", fmt.Sprint("userLongTableBookings:", user["id"], ":", date), 0, -1); err != nil {
+        return false, err
+    } else if longTableBookingIDs, err := redis.Ints(reply, err); err != nil {
+        return false, err
+    } else {
+        for _, longTableBookingID := range longTableBookingIDs {
+            if _, err := db.Do("ZSCORE", fmt.Sprint("userLongTableBookings:", user["id"]), longTableBookingID); err != nil {
+                if err != redis.ErrNil {
+                    return false, err
+                }
+            } else {
+                return true, nil
+            }
+        }
+    }
+
+    return false, nil
+}
+
 func (user User) Connections() ([]User, error) {
     var users []User
 
@@ -560,8 +581,14 @@ func (user User) SimilarUsers() ([]User, error) {
     }
 }
 
-func (user User) IsConnectedTo(otherUser User) bool {
+func (user User) IsConnectedTo(otherUser User) (bool, error) {
     reply, err := db.Do("ZSCORE", fmt.Sprint("userConnections:", user["id"]), otherUser["id"])
-    _, err = redis.Int(reply, err)
-    return err == nil
+    if _, err = redis.Int(reply, err); err != nil {
+        if err != redis.ErrNil  {
+            return false, err
+        }
+        return false, nil
+    } else {
+        return true, nil
+    }
 }

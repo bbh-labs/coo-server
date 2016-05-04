@@ -9,13 +9,6 @@
 </head>
 <body>
     {{ if .id }}
-        <p>Hello, {{ .firstname }}</p>
-        <a href='/dashboard'>Dashboard</a>
-        <a href='/profile'>Profile</a>
-        <a href='/longtables'>Longtables</a>
-        <a href='/api/logout'>Log Out</a>
-        <hr />
-
         <p>Hello, {{ .firstname }} {{ with .imageURL }} <img src='{{ . }}' /> {{ end }}</p>
         <a href='/dashboard'>Dashboard</a>
         <a href='/profile'>Profile</a>
@@ -32,6 +25,11 @@
             <div>
                 <label>Lastname
                     <input type='text' name='lastname' value='{{ .lastname }}' />
+                </label>
+            </div>
+            <div>
+                <label>Nickname
+                    <input type='text' name='nickname' value='{{ .nickname }}' />
                 </label>
             </div>
             <div>
@@ -52,6 +50,15 @@
             <div>
                 <label>Birthdate
                     <input type='date' name='birthdate' {{ with .birthdate }} value='{{ . }}' {{ end }} />
+                </label>
+            </div>
+            <div>
+                <label>Gender
+                    <select name='gender'>
+                        <option value='male' {{ if (eq .gender "male") }} selected {{ end }}>Male</option>
+                        <option value='female' {{ if (eq .gender "female") }} selected {{ end }}>Female</option>
+                        <option value='other' {{ if (eq .gender "other") }} selected {{ end }}>Other</option>
+                    </select>
                 </label>
             </div>
             <div>
@@ -112,12 +119,12 @@
 
         <p>{{ .otherUser.firstname }} {{ .otherUser.lastname }}</p>
         {{ if (.user.IsConnectedTo .otherUser) }}
-            <form action='/api/user/connect/delete' method='POST'>
+            <form action='/api/user/connection/delete' method='POST'>
                 <input type='hidden' name='otherUserID' value='{{ .otherUser.id }}' />
                 <button>Disconnect</button>
             </form>
         {{ else }}
-            <form action='/api/user/connect' method='POST'>
+            <form action='/api/user/connection' method='POST'>
                 <input type='hidden' name='otherUserID' value='{{ .otherUser.id }}' />
                 <button>Connect</button>
             </form>

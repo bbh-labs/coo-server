@@ -36,6 +36,8 @@ var templates *template.Template
 var address = flag.String("address", "http://localhost:8080", "server address")
 var port = flag.String("port", "8080", "server port")
 var test = flag.Bool("test", false, "serve front-end test sample")
+var dbhost = flag.String("dbhost", "", "database host")
+var dbport = flag.String("dbport", "6379", "database port")
 
 // Errors
 var (
@@ -43,6 +45,8 @@ var (
     ErrPasswordTooShort    = errors.New("Password too short")
     ErrFirstnameTooShort   = errors.New("Firstname too short")
     ErrLastnameTooShort    = errors.New("Lastname too short")
+    ErrNicknameTooShort    = errors.New("Nickname too short")
+    ErrInvalidGender       = errors.New("Invalid gender")
 
     ErrNotLoggedIn         = errors.New("User is not logged in")
     ErrPasswordMismatch    = errors.New("Password mismatch")
@@ -53,11 +57,14 @@ var (
     ErrMissingKey          = errors.New("Missing key")
     ErrIDMismach           = errors.New("ID mismatch")
     ErrPermissionDenied    = errors.New("Permission denied")
+    ErrUserAlreadyBooked   = errors.New("User already booked")
+    ErrSeatIsUnavailable   = errors.New("Seat is unavailable")
 )
 
 // Constants
 const (
-    DateFormat = "2-1-2006"
+    DateFormat = "02-01-2006"
+    TimeFormat = "15:04"
 )
 
 func main() {
@@ -79,7 +86,7 @@ func main() {
     flag.Parse()
 
     // Connect to database
-    if db, err = redis.Dial("tcp", ":6379"); err != nil {
+    if db, err = redis.Dial("tcp", *dbhost + ":" + *dbport); err != nil {
         log.Fatal(err)
     }
 
@@ -98,16 +105,18 @@ func main() {
     apiRouter.HandleFunc("/signup", signupHandler)
     apiRouter.HandleFunc("/logout", logoutHandler)
     apiRouter.HandleFunc("/user", userHandler)
-    apiRouter.HandleFunc("/user/connect", userConnectHandler)
+    apiRouter.HandleFunc("/user/connection", userConnectionHandler)
+    apiRouter.HandleFunc("/user/longTableBookings", userLongTableBookingsHandler)
+    apiRouter.HandleFunc("/user/similarUsers", userSimilarUsersHandler)
     apiRouter.HandleFunc("/users", usersHandler)
-    apiRouter.HandleFunc("/users/similar", usersSimilarHandler)
     apiRouter.HandleFunc("/longtable", longTableHandler)
-    apiRouter.HandleFunc("/longtables", longTablesHandler)
     apiRouter.HandleFunc("/longtable/booking", longTableBookingHandler)
+    apiRouter.HandleFunc("/longtable/availableSeats", longTableAvailableSeatsHandler)
+    apiRouter.HandleFunc("/longtables", longTablesHandler)
 
     // Extra
     apiRouter.HandleFunc("/longtable/booking/delete", longTableBookingDeleteHandlerFunc)
-    apiRouter.HandleFunc("/user/connect/delete", userConnectionDeleteHandlerFunc)
+    apiRouter.HandleFunc("/user/connection/delete", userConnectionDeleteHandlerFunc)
 
     // Prepare social login authenticators
     patHandler := pat.New()
@@ -181,8 +190,8 @@ func setupTemplateHandlers(router *mux.Router) {
             } else if user["id"].(int) == otherUserID {
                 templates.ExecuteTemplate(w, "profile", user)
             } else {
-                user = User{"id": otherUserID}
-                if otherUser, err := user.fetch(); err != nil {
+                otherUser := User{"id": otherUserID}
+                if otherUser, err := otherUser.fetch(); err != nil {
                     http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
                 } else {
                     templates.ExecuteTemplate(w, "profile", map[string]interface{}{"user": user, "otherUser": otherUser})
@@ -392,9 +401,21 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        nickname := r.FormValue("nickname")
+        if len(lastname) < 2 {
+            http.Error(w, ErrNicknameTooShort.Error(), http.StatusBadRequest)
+            return
+        }
+
         birthdate := r.FormValue("birthdate")
         if _, err := parseDate(birthdate); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        gender := r.FormValue("gender")
+        if !(gender == "male" || gender == "female" || gender == "other") {
+            http.Error(w, ErrInvalidGender.Error(), http.StatusBadRequest)
             return
         }
 
@@ -409,6 +430,8 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             } else if destination != "" {
                 imageURL = destination
             }
+        } else if url := r.FormValue("imageURL"); url != "" {
+            imageURL = url
         }
 
         // Generate hashed password
@@ -423,10 +446,12 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         user := User{
             "firstname": firstname,
             "lastname":  lastname,
+            "nickname":  nickname,
             "email":     email,
             "password":  string(hashedPassword),
             "imageURL":  imageURL,
             "birthdate": birthdate,
+            "gender": gender,
         }
 
         // Set User interests if exist
@@ -492,7 +517,9 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
         }
         s.set(user, "firstname", r.FormValue("firstname"))
         s.set(user, "lastname", r.FormValue("lastname"))
+        s.set(user, "nickname", r.FormValue("nickname"))
         s.set(user, "email", r.FormValue("email"))
+        s.set(user, "gender", r.FormValue("gender"))
         s.set(user, "travellingAs", r.FormValue("travellingAs"))
         s.set(user, "wechatNumber", r.FormValue("wechatNumber"))
         s.set(user, "lineNumber", r.FormValue("lineNumber"))
@@ -588,7 +615,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func userConnectHandler(w http.ResponseWriter, r *http.Request) {
+func userConnectionHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
         // Check if User is logged in
@@ -633,6 +660,61 @@ func userConnectHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
+func userLongTableBookingsHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        // Check if User is logged in
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        // Get Users that match the parameters
+        if longTableBookings, err := user.longTableBookings(); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            data, err := json.Marshal(longTableBookings)
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            w.Write(data)
+        }
+
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func userSimilarUsersHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        // Check if User is logged in
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        // Get similar Users
+        if users, err := user.SimilarUsers(); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            data, err := json.Marshal(users)
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            w.Write(data)
+        }
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
 func usersHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
@@ -654,33 +736,6 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
 
         // Get Users that match the parameters
         if users, err := fetchUsers(params); err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        } else {
-            data, err := json.Marshal(users)
-            if err != nil {
-                http.Error(w, err.Error(), http.StatusInternalServerError)
-                return
-            }
-            w.Write(data)
-        }
-    default:
-        w.WriteHeader(http.StatusMethodNotAllowed)
-    }
-}
-
-func usersSimilarHandler(w http.ResponseWriter, r *http.Request) {
-    switch r.Method {
-    case "GET":
-        // Check if User is logged in
-        loggedIn, user := loggedIn(w, r, true)
-        if !loggedIn {
-            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
-            return
-        }
-
-        // Get similar Users
-        if users, err := user.SimilarUsers(); err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         } else {
@@ -730,6 +785,12 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        // Check privilege
+        if privilege, ok := user["admin"]; !ok || privilege != "admin" {
+            http.Error(w, ErrPermissionDenied.Error(), http.StatusForbidden)
+            return
+        }
+
         name := r.FormValue("name")
 
         // Check if 'name' query parameter is valid
@@ -751,7 +812,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
 
         // Check if 'openingTime' query parameter is valid
         openingTime := r.FormValue("openingTime")
-        if _, err := time.Parse("15:04", openingTime); err != nil {
+        if _, err := time.Parse(TimeFormat, openingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
@@ -760,7 +821,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
 
         // Check if 'closingTime' query parameter is valid
         closingTime := r.FormValue("closingTime")
-        if _, err := time.Parse("15:04", closingTime); err != nil {
+        if _, err := time.Parse(TimeFormat, closingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
@@ -773,7 +834,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             return
         } else {
             if *test {
-                http.Redirect(w, r, "/longtable", http.StatusTemporaryRedirect)
+                http.Redirect(w, r, fmt.Sprint("/longtable/", longTableID), http.StatusTemporaryRedirect)
             } else {
                 w.Write([]byte(strconv.Itoa(longTableID)))
             }
@@ -784,6 +845,12 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
         loggedIn, user := loggedIn(w, r, true)
         if !loggedIn {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        // Check privilege
+        if privilege, ok := user["admin"]; !ok || privilege != "admin" {
+            http.Error(w, ErrPermissionDenied.Error(), http.StatusForbidden)
             return
         }
 
@@ -816,7 +883,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
 
         // Check if 'openingTime' query parameter is valid
         openingTime := r.FormValue("openingTime")
-        if _, err := time.Parse("15:04", openingTime); err != nil {
+        if _, err := time.Parse(TimeFormat, openingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
@@ -825,7 +892,7 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
 
         // Check if 'closingTime' query parameter is valid
         closingTime := r.FormValue("closingTime")
-        if _, err := time.Parse("15:04", closingTime); err != nil {
+        if _, err := time.Parse(TimeFormat, closingTime); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         } else {
@@ -838,6 +905,170 @@ func longTableHandler(w http.ResponseWriter, r *http.Request) {
             return
         } else {
             w.Write([]byte(strconv.Itoa(longTable["id"].(int))))
+        }
+
+    case "DELETE":
+        // Check if User is logged in
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        // Check privilege
+        if privilege, ok := user["admin"]; !ok || privilege != "admin" {
+            http.Error(w, ErrPermissionDenied.Error(), http.StatusForbidden)
+            return
+        }
+
+        longTable := LongTable{}
+
+        // Check LongTable ID
+        if longTableID, err := strconv.Atoi(r.FormValue("id")); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            longTable["id"] = longTableID
+        }
+
+        if err := longTable.delete(); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        var longTableID, seatPosition int
+        var date string
+        var err error
+
+        // Check if User is logged in
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        // Initialize LongTableBooking
+        longTableBooking := LongTableBooking{"userID": user["id"]}
+
+        // Check if 'longTableID' query parameter is valid
+        if longTableID, err = strconv.Atoi(r.FormValue("longTableID")); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        } else {
+            // Check if 'date' query parameter is valid
+            date = r.FormValue("date")
+            if _, err = time.Parse(DateFormat, date); err != nil {
+                http.Error(w, err.Error(), http.StatusBadRequest)
+                return
+            } else {
+                longTableBooking["date"] = date
+            }
+
+            // Check if user already booked at this date
+            if booked, err := user.bookedLongTable(LongTable{"id": longTableID}, date); err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            } else if booked {
+                http.Error(w, ErrUserAlreadyBooked.Error(), http.StatusBadRequest)
+                return
+            }
+
+            // Check if 'seatPosition' query parameter is valid
+            if seatPosition, err = strconv.Atoi(r.FormValue("seatPosition")); err != nil {
+                http.Error(w, err.Error(), http.StatusBadRequest)
+                return
+            } else {
+                longTableBooking["seatPosition"] = seatPosition
+            }
+
+            longTable := LongTable{"id": longTableID};
+            if available, err := longTable.isSeatAvailable(date, seatPosition); err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            } else if !available {
+                http.Error(w, ErrSeatIsUnavailable.Error(), http.StatusBadRequest)
+                return
+            }
+
+            // Get LongTable with set 'longTableID'
+            if longTable, err := longTable.fetch(); err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            } else {
+                // Check if seatPosition is equal to or higher than numSeats
+                if numSeats, ok := longTable["numSeats"].(int); !ok {
+                    http.Error(w, ErrTypeAssertionFailed.Error(), http.StatusInternalServerError)
+                    return
+                } else if seatPosition >= numSeats {
+                    w.WriteHeader(http.StatusBadRequest)
+                    return
+                }
+            }
+            longTableBooking["longTableID"] = longTableID
+        }
+
+        // Insert LongTableBooking
+        if longTableBookingID, err := longTableBooking.insert(); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            if *test {
+                http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
+            } else {
+                w.Write([]byte(strconv.Itoa(longTableBookingID)))
+            }
+        }
+
+    case "DELETE":
+        longTableBookingDeleteHandlerFunc(w, r)
+
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func longTableAvailableSeatsHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        var longTableID int
+        var date string
+        var err error
+
+        if longTableID, err = strconv.Atoi(r.FormValue("longTableID")); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        date = r.FormValue("date")
+        if _, err = time.Parse(DateFormat, date); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        longTable := LongTable{"id": longTableID}
+
+        // Get availabe seats on the longtable
+        if seats, err := longTable.fetchAvailableSeats(date); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        } else {
+            data, err := json.Marshal(seats)
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            w.Write(data)
         }
 
     default:
@@ -877,84 +1108,6 @@ func longTablesHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func longTableBookingHandler(w http.ResponseWriter, r *http.Request) {
-    switch r.Method {
-    case "POST":
-        var longTableID, seatPosition int
-        var date string
-        var err error
-
-        // Check if User is logged in
-        loggedIn, user := loggedIn(w, r, true)
-        if !loggedIn {
-            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
-            return
-        }
-
-        // Initialize LongTableBooking
-        longTableBooking := LongTableBooking{"userID": user["id"]}
-
-        // Check if 'seatPosition' query parameter is valid
-        if seatPosition, err = strconv.Atoi(r.FormValue("seatPosition")); err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
-        } else {
-            longTableBooking["seatPosition"] = seatPosition
-        }
-
-        // Check if 'date' query parameter is valid
-        date = r.FormValue("date")
-        if _, err = time.Parse(DateFormat, date); err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
-        } else {
-            longTableBooking["date"] = date
-        }
-
-        // Check if 'longTableID' query parameter is valid
-        if longTableID, err = strconv.Atoi(r.FormValue("longTableID")); err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
-        } else {
-            // Get LongTable with set 'longTableID'
-            longTable := LongTable{"id": longTableID}
-            if longTable, err := longTable.fetch(); err != nil {
-                http.Error(w, err.Error(), http.StatusInternalServerError)
-                return
-            } else {
-                // Check if seatPosition is equal to or higher than numSeats
-                if numSeats, ok := longTable["numSeats"].(int); !ok {
-                    http.Error(w, ErrTypeAssertionFailed.Error(), http.StatusInternalServerError)
-                    return
-                } else if seatPosition >= numSeats {
-                    w.WriteHeader(http.StatusBadRequest)
-                    return
-                }
-            }
-            longTableBooking["longTableID"] = longTableID
-        }
-
-        // Insert LongTableBooking
-        if longTableBookingID, err := longTableBooking.insert(); err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        } else {
-            if *test {
-                http.Redirect(w, r, "/dashboard", http.StatusTemporaryRedirect)
-            } else {
-                w.Write([]byte(strconv.Itoa(longTableBookingID)))
-            }
-        }
-
-    case "DELETE":
-        longTableBookingDeleteHandlerFunc(w, r)
-
-    default:
-        w.WriteHeader(http.StatusMethodNotAllowed)
-    }
-}
-
-
 func longTableBookingDeleteHandlerFunc(w http.ResponseWriter, r *http.Request) {
     // Check if User is logged in
     loggedIn, user := loggedIn(w, r, true)
@@ -964,6 +1117,7 @@ func longTableBookingDeleteHandlerFunc(w http.ResponseWriter, r *http.Request) {
     }
 
     var longTableBookingID int
+    var date string
     var err error
 
     if longTableBookingID, err = strconv.Atoi(r.FormValue("longTableBookingID")); err != nil {
@@ -971,7 +1125,13 @@ func longTableBookingDeleteHandlerFunc(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    longTableBooking := LongTableBooking{"id":longTableBookingID, "userID": user["id"]}
+    date = r.FormValue("date")
+    if _, err := time.Parse(DateFormat, date); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    longTableBooking := LongTableBooking{"id":longTableBookingID, "userID": user["id"], "date": date}
     if err := longTableBooking.delete(); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return

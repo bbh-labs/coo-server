@@ -73,7 +73,7 @@ func (longTableBooking LongTableBooking) fetch() (LongTableBooking, error) {
 
 // Insert LongTableBooking with specified parameters
 func (longTableBooking LongTableBooking) insert() (int, error) {
-    if !hasKeys(longTableBooking, "longTableID", "userID") {
+    if !hasKeys(longTableBooking, "longTableID", "userID", "date") {
         return 0, ErrMissingKey
     }
 
@@ -104,8 +104,18 @@ func (longTableBooking LongTableBooking) insert() (int, error) {
         return 0, err
     }
 
+    // Add longTableBooking to longTableBookings:[LongTableID]:[date] list
+    if _, err := db.Do("ZADD", fmt.Sprint("longTableBookings:", longTableBooking["longTableID"], ":", longTableBooking["date"]), now, longTableBookingID); err != nil {
+        return 0, err
+    }
+
     // Add longTableBooking to userLongTableBookings list
     if _, err := db.Do("ZADD", fmt.Sprint("userLongTableBookings:", longTableBooking["userID"]), now, longTableBookingID); err != nil {
+        return 0, err
+    }
+
+    // Add longTableBooking to userLongTableBookings:[userID]:[date] list
+    if _, err := db.Do("ZADD", fmt.Sprint("userLongTableBookings:", longTableBooking["userID"], ":", longTableBooking["date"]), now, longTableBookingID); err != nil {
         return 0, err
     }
 
@@ -114,6 +124,10 @@ func (longTableBooking LongTableBooking) insert() (int, error) {
 
 // Delete LongTableBooking with specified parameters
 func (longTableBooking LongTableBooking) delete() error {
+    if !hasKeys(longTableBooking, "id", "userID", "date") {
+        return ErrMissingKey
+    }
+
     longTableBookingID := longTableBooking["id"]
 
     // Delete longTableBooking
@@ -126,8 +140,18 @@ func (longTableBooking LongTableBooking) delete() error {
         return err
     }
 
+    // Remove longTableBooking from longTableBookings:[LongTableID]:[date] list
+    if _, err := db.Do("ZREM", fmt.Sprint("longTableBookings:", longTableBooking["longTableID"], ":", longTableBooking["date"]), longTableBookingID); err != nil {
+        return err
+    }
+
     // Remove longTableBooking from userLongTableBookings list
     if _, err := db.Do("ZREM", fmt.Sprint("userLongTableBookings:", longTableBooking["userID"]), longTableBookingID); err != nil {
+        return err
+    }
+
+    // Remove longTableBooking from userLongTableBookings:[userID]:[date] list
+    if _, err := db.Do("ZREM", fmt.Sprint("longTableBookings:", longTableBooking["userID"], ":", longTableBooking["date"]), longTableBookingID); err != nil {
         return err
     }
 
@@ -178,10 +202,18 @@ func getLongTableBookings(params map[string]interface{}) ([]LongTableBooking, er
         }
     }
 
-    if longTableID, ok := params["longTableID"]; ok {
-        return _getLongTableBookings("ZRANGE", fmt.Sprint("longTableBookings:", longTableID), 0, count - 1)
-    } else if userID, ok := params["userID"]; ok {
-        return _getLongTableBookings("ZRANGE", fmt.Sprint("userLongTableBookings:", userID), 0, count - 1)
+    if date, ok := params["date"]; ok {
+        if longTableID, ok := params["longTableID"]; ok {
+            return _getLongTableBookings("ZRANGE", fmt.Sprint("longTableBookings:", longTableID, ":", date), 0, count - 1)
+        } else if userID, ok := params["userID"]; ok {
+            return _getLongTableBookings("ZRANGE", fmt.Sprint("userLongTableBookings:", userID, ":", date), 0, count - 1)
+        }
+    } else {
+        if longTableID, ok := params["longTableID"]; ok {
+            return _getLongTableBookings("ZRANGE", fmt.Sprint("longTableBookings:", longTableID), 0, count - 1)
+        } else if userID, ok := params["userID"]; ok {
+            return _getLongTableBookings("ZRANGE", fmt.Sprint("userLongTableBookings:", userID), 0, count - 1)
+        }
     }
 
     return nil, ErrMissingKey

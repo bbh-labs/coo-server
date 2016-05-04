@@ -21,45 +21,45 @@
         <h3>List of LongTables</h3>
         {{ with $longtables }}
             <ul>
-            {{ range $k, $longtable := . }} 
-                <div>
-                    <a href='/longtable/{{ $longtable.id }}'>{{ $longtable.name }}</a>
-                </div>
-            {{ end }}
-        </ul>
+                {{ range $k, $longtable := . }} 
+                    <div>
+                        <a href='/longtable/{{ $longtable.id }}'>{{ $longtable.name }}</a>
+                    </div>
+                {{ end }}
+            </ul>
         {{ else }}
-        <p>No longtables..</p>
+            <p>No longtables..</p>
         {{ end }}
     </div>
 
     {{ if eq .privilege "admin" }}
-    <form action='/api/longtable' method='POST'>
-        <h3>Create a LongTable</h3>
-        <div>
-            <label>Name
-                <input type='text' name='name' />
-            </label>
-        </div>
-        <div>
-            <label>Num. Seats
-                <input type='range' name='numSeats' />
-                <output for='numSeats' onforminput='value = numSeats.valueAsNumber;'></output>
-            </label>
-        </div>
-        <div>
-            <label>Opening Time
-                <input type='time' name='openingTime' />
-            </label>
-        </div>
-        <div>
-            <label>Closing Time
-                <input type='time' name='closingTime' />
-            </label>
-        </div>
-        <div>
-            <button type='submit'>Create a LongTable</button>
-        </div>
-    </form>
+        <form action='/api/longtable' method='POST'>
+            <h3>Create a LongTable</h3>
+            <div>
+                <label>Name
+                    <input type='text' name='name' />
+                </label>
+            </div>
+            <div>
+                <label>Num. Seats
+                    <input type='range' name='numSeats' />
+                    <output for='numSeats' onforminput='value = numSeats.valueAsNumber;'></output>
+                </label>
+            </div>
+            <div>
+                <label>Opening Time
+                    <input type='time' name='openingTime' />
+                </label>
+            </div>
+            <div>
+                <label>Closing Time
+                    <input type='time' name='closingTime' />
+                </label>
+            </div>
+            <div>
+                <button type='submit'>Create a LongTable</button>
+            </div>
+        </form>
     {{ end }}
 </body>
 </html>

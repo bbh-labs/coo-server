@@ -16,14 +16,11 @@
     <hr />
 
     <h3>{{ .longtable.name }}</h3>
+    <p>Opening time: {{ .longtable.openingTime }}</p>
+    <p>Closing time: {{ .longtable.closingTime }}</p>
 
     <div>
-        <h4>Available Seats</h4>
         {{ with .longtable }}
-            {{ range .availableSeats }}
-                <button disabled>{{ . }}</button>
-            {{ end }}
-
             <form action='/api/longtable/booking' method='POST'>
                 <div>
                     <label>Seat Position
