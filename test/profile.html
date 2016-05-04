@@ -117,8 +117,22 @@
         <a href='/api/logout'>Log Out</a>
         <hr />
 
-        <p>{{ .otherUser.firstname }} {{ .otherUser.lastname }}</p>
+        {{ with .otherUser.imageURL }}
+            <img src='{{ . }}' />
+        {{ end }}
+
+        <p>{{ .otherUser.firstname }} {{ .otherUser.lastname }} {{ with .otherUser.nickname }} ({{ . }}) {{ end }}</p>
         {{ if (.user.IsConnectedTo .otherUser) }}
+            <p>Email: {{ .otherUser.email }}</p>
+            <p>Birthdate: {{ .otherUser.birthdate }}</p>
+            <p>Gender: {{ .otherUser.gender }}</p>
+            {{ with .otherUser.wechatNumber }} <p>WeChat: {{ . }}</p> {{ end }}
+            {{ with .otherUser.lineNumber }} <p>LINE: {{ . }}</p> {{ end }}
+            {{ with .otherUser.facebookNumber }} <p>Facebook: {{ . }}</p> {{ end }}
+            {{ with .otherUser.skypeNumber }} <p>Skype: {{ . }}</p> {{ end }}
+            {{ with .otherUser.whatsappNumber }} <p>WhatsApp: {{ . }}</p> {{ end }}
+            <br />
+
             <form action='/api/user/connection/delete' method='POST'>
                 <input type='hidden' name='otherUserID' value='{{ .otherUser.id }}' />
                 <button>Disconnect</button>
