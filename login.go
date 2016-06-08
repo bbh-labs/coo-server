@@ -16,12 +16,12 @@ func loggedIn(w http.ResponseWriter, r *http.Request, fetchUser bool) (bool, Use
 	if userID, ok := val.(int); !ok {
 		return false, nil
 	} else {
-        user := User{"id": userID}
-        if exists, user := user.exists(fetchUser); !exists {
-            return false, nil
-        } else {
-            return true, user
-        }
+		user := User{"id": userID}
+		if exists, user := user.exists(fetchUser); !exists {
+			return false, nil
+		} else {
+			return true, user
+		}
 	}
 }
 
